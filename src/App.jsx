@@ -10,6 +10,40 @@ const DEFAULT_HABITS = [
 ];
 const HABIT_COLORS = ['#34d399', '#38bdf8', '#818cf8', '#c084fc', '#f472b6', '#fb7185', '#fbbf24', '#fb923c'];
 const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WORKOUTS = {
+  strengthA: {
+    title: 'Full-body strength A', focus: 'Steady strength',
+    exercises: [
+      { id: 'squat', name: 'Barbell back squat', equipment: 'Rack + Olympic barbell', sets: 3, reps: '6–10', rest: '90–120 sec' },
+      { id: 'bench', name: 'Incline bench press', equipment: 'Incline bench + barbell or dumbbells', sets: 3, reps: '8–12', rest: '90 sec' },
+      { id: 'pulldown', name: 'Cable lat pulldown', equipment: 'Cage pulley', sets: 3, reps: '8–12', rest: '60–90 sec' },
+      { id: 'leg-extension', name: 'Leg extension', equipment: 'Bench leg-extension attachment', sets: 2, reps: '10–15', rest: '60 sec' },
+      { id: 'pilates', name: 'Pilates footwork / controlled core', equipment: 'Pilates machine', sets: 2, reps: '8–12 controlled reps', rest: '45 sec' },
+      { id: 'treadmill', name: 'Easy treadmill walk', equipment: 'Treadmill', duration: 10, unit: 'min' },
+    ],
+  },
+  strengthB: {
+    title: 'Full-body strength B', focus: 'Hinge, push, and pull',
+    exercises: [
+      { id: 'deadlift', name: 'Romanian deadlift', equipment: 'Olympic barbell or dumbbells', sets: 3, reps: '8–10', rest: '90 sec' },
+      { id: 'decline-press', name: 'Dumbbell floor or decline press', equipment: 'Decline bench + dumbbells', sets: 3, reps: '8–12', rest: '90 sec' },
+      { id: 'cable-row', name: 'Cable row', equipment: 'Cage pulley', sets: 3, reps: '8–12', rest: '60–90 sec' },
+      { id: 'split-squat', name: 'Dumbbell split squat', equipment: 'Dumbbells + bench (optional)', sets: 2, reps: '8 each side', rest: '60–90 sec' },
+      { id: 'sandbag-carry', name: 'Sandbag bear-hug carry', equipment: 'Weighted sandbag', sets: 3, reps: '30–45 sec', rest: '60 sec' },
+      { id: 'forearm', name: 'Forearm roller', equipment: 'Forearm roller', sets: 2, reps: '1–2 controlled passes', rest: '45 sec' },
+    ],
+  },
+  conditioning: {
+    title: 'Low-impact conditioning & mobility', focus: 'Build your engine; move comfortably',
+    exercises: [
+      { id: 'walk', name: 'Brisk treadmill walk', equipment: 'Treadmill', duration: 20, unit: 'min' },
+      { id: 'rope', name: 'Jump rope intervals (optional)', equipment: 'Jump rope; substitute walking if needed', sets: 6, reps: '30 sec easy / 60 sec rest', rest: 'As listed' },
+      { id: 'pilates-flow', name: 'Pilates machine flow', equipment: 'Pilates machine', duration: 10, unit: 'min' },
+      { id: 'goblet', name: 'Light dumbbell goblet squat', equipment: 'Dumbbell', sets: 2, reps: '10–12', rest: '60 sec' },
+      { id: 'cable-facepull', name: 'Cable face pull', equipment: 'Cage pulley', sets: 2, reps: '12–15', rest: '45–60 sec' },
+    ],
+  },
+};
 const cardStyle = { background: '#1f2937', border: '1px solid #293548', borderRadius: '18px', padding: '20px', marginBottom: '16px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)' };
 const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: '#f9fafb', fontSize: '16px', boxSizing: 'border-box' };
 const buttonStyle = { border: '1px solid #374151', borderRadius: '10px', padding: '9px 12px', background: '#111827', color: '#e5e7eb', fontSize: '14px', cursor: 'pointer' };
@@ -27,15 +61,13 @@ function formatDate(key, options = { weekday: 'long', month: 'long', day: 'numer
 }
 function makeDefaultState(today) {
   return {
-    weight: 185,
-    goalWeight: 160,
-    habitDefinitions: DEFAULT_HABITS,
+    weight: 185, goalWeight: 160, habitDefinitions: DEFAULT_HABITS,
     habitsByDate: { [today]: { sleep: true, hydration: true, movement: false, focus: true, mindfulness: false } },
+    workoutPlans: {}, workoutLogs: {},
     entries: { [today]: {
       journal: 'Today felt grounded. I kept my routine simple and took small moves toward the goals that matter most.',
       recovery: 'Felt a little sore after the workout, but recovery is improving. Stretching and walking helped a lot.',
-      notes: 'Keep the day gentle. Protect energy and stay consistent with the basics.',
-      mood: 'balanced', energy: '7',
+      notes: 'Keep the day gentle. Protect energy and stay consistent with the basics.', mood: 'balanced', energy: '7',
     } },
   };
 }
@@ -52,49 +84,39 @@ function loadState(today) {
       })
       : defaults.habitDefinitions;
     return {
+      ...defaults, ...saved,
       weight: Number(saved.weight) || defaults.weight,
       goalWeight: Number(saved.goalWeight) || defaults.goalWeight,
       habitDefinitions,
       habitsByDate: saved.habitsByDate || { [today]: saved.habits || defaults.habitsByDate[today] },
+      workoutPlans: saved.workoutPlans && typeof saved.workoutPlans === 'object' ? saved.workoutPlans : {},
+      workoutLogs: saved.workoutLogs && typeof saved.workoutLogs === 'object' ? saved.workoutLogs : {},
       entries: saved.entries || { [today]: {
-        journal: saved.journal ?? defaults.entries[today].journal,
-        recovery: saved.recovery ?? defaults.entries[today].recovery,
-        notes: saved.notes ?? defaults.entries[today].notes,
-        mood: saved.mood ?? defaults.entries[today].mood,
+        journal: saved.journal ?? defaults.entries[today].journal, recovery: saved.recovery ?? defaults.entries[today].recovery,
+        notes: saved.notes ?? defaults.entries[today].notes, mood: saved.mood ?? defaults.entries[today].mood,
         energy: saved.energy ?? defaults.entries[today].energy,
       } },
     };
-  } catch {
-    return defaults;
-  }
+  } catch { return defaults; }
 }
-function isComplete(habitsByDate, habitId, day) {
-  return Boolean(habitsByDate[day]?.[habitId]);
-}
+function isComplete(habitsByDate, habitId, day) { return Boolean(habitsByDate[day]?.[habitId]); }
 function streakFor(habitsByDate, habitId, endingDay, today) {
   let cursor = endingDay;
   if (cursor === today && !isComplete(habitsByDate, habitId, cursor)) cursor = shiftDate(cursor, -1);
   let streak = 0;
-  while (isComplete(habitsByDate, habitId, cursor)) {
-    streak += 1;
-    cursor = shiftDate(cursor, -1);
-  }
+  while (isComplete(habitsByDate, habitId, cursor)) { streak += 1; cursor = shiftDate(cursor, -1); }
   return streak;
 }
 function longestStreakFor(habitsByDate, habitId) {
   const completedDays = Object.keys(habitsByDate).filter((day) => isComplete(habitsByDate, habitId, day)).sort();
-  let best = 0;
-  let run = 0;
-  let previous = null;
-  for (const day of completedDays) {
-    run = previous && shiftDate(previous, 1) === day ? run + 1 : 1;
-    best = Math.max(best, run);
-    previous = day;
-  }
+  let best = 0; let run = 0; let previous = null;
+  for (const day of completedDays) { run = previous && shiftDate(previous, 1) === day ? run + 1 : 1; best = Math.max(best, run); previous = day; }
   return best;
 }
-function createHabitId() {
-  return globalThis.crypto?.randomUUID?.() || `habit-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+function createHabitId() { return globalThis.crypto?.randomUUID?.() || `habit-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
+function workoutForDate(plans, day) {
+  const key = plans[day] || ['strengthA', 'conditioning', 'strengthB'][new Date(`${day}T00:00:00`).getDay() % 3];
+  return WORKOUTS[key] || WORKOUTS.strengthA;
 }
 
 function App() {
@@ -127,11 +149,14 @@ function App() {
   });
   const bestWeekDay = weeklySummaries.reduce((best, current) => current.count > best.count ? current : best, weeklySummaries[0]);
   const totalWeekHabitWins = weeklySummaries.reduce((sum, item) => sum + item.count, 0);
+  const workout = workoutForDate(state.workoutPlans, selectedDate);
+  const workoutLog = state.workoutLogs[selectedDate] || {};
+  const completedExercises = workout.exercises.filter((exercise) => workoutLog[exercise.id]?.done).length;
+  const workoutHistory = Object.entries(state.workoutLogs).filter(([, log]) => Object.values(log || {}).some((item) => item?.done)).length;
 
   function updateEntry(field, value) {
     setState((current) => ({ ...current, entries: { ...current.entries, [selectedDate]: {
-      journal: '', recovery: '', notes: '', mood: 'balanced', energy: '7',
-      ...current.entries[selectedDate], [field]: value,
+      journal: '', recovery: '', notes: '', mood: 'balanced', energy: '7', ...current.entries[selectedDate], [field]: value,
     } } }));
   }
   function toggleHabit(habitId) {
@@ -141,20 +166,13 @@ function App() {
   }
   function saveHabit(rawHabit, habitId = null) {
     const name = rawHabit.name.trim();
-    if (!name) {
-      setHabitError('Enter a habit name.');
-      return false;
-    }
-    if (state.habitDefinitions.some((habit) => habit.id !== habitId && habit.name.toLowerCase() === name.toLowerCase())) {
-      setHabitError('A habit with that name already exists.');
-      return false;
-    }
+    if (!name) { setHabitError('Enter a habit name.'); return false; }
+    if (state.habitDefinitions.some((habit) => habit.id !== habitId && habit.name.toLowerCase() === name.toLowerCase())) { setHabitError('A habit with that name already exists.'); return false; }
     setState((current) => ({ ...current, habitDefinitions: habitId
       ? current.habitDefinitions.map((habit) => habit.id === habitId ? { ...habit, ...rawHabit, name } : habit)
-      : [...current.habitDefinitions, { ...rawHabit, id: createHabitId(), name, icon: rawHabit.icon.trim() || '✨' }],
-    }));
-    setHabitError('');
-    return true;
+      : [...current.habitDefinitions, { ...rawHabit, id: createHabitId(), name, icon: rawHabit.icon.trim() || '✨' },
+    } }));
+    setHabitError(''); return true;
   }
   function addHabit(event) {
     event.preventDefault();
@@ -164,8 +182,7 @@ function App() {
     if (!window.confirm(`Delete “${habit.name}” and its completion history? This cannot be undone.`)) return;
     setState((current) => {
       const habitsByDate = Object.fromEntries(Object.entries(current.habitsByDate).map(([day, habits]) => {
-        const { [habit.id]: removed, ...remaining } = habits;
-        return [day, remaining];
+        const { [habit.id]: removed, ...remaining } = habits; return [day, remaining];
       }));
       return { ...current, habitDefinitions: current.habitDefinitions.filter((item) => item.id !== habit.id), habitsByDate };
     });
@@ -178,12 +195,18 @@ function App() {
   function restoreDefaultHabits() {
     if (!window.confirm('Restore the five default habits? Custom habits will be removed, but existing completion history for matching default habits will remain.')) return;
     setState((current) => ({ ...current, habitDefinitions: DEFAULT_HABITS }));
-    setEditingHabitId(null);
-    setHabitError('');
+    setEditingHabitId(null); setHabitError('');
   }
-  function updateNumber(field, value) {
-    setState((current) => ({ ...current, [field]: Number(value) || 0 }));
+  function generateWorkout(event) {
+    const planId = event.target.value;
+    setState((current) => ({ ...current, workoutPlans: { ...current.workoutPlans, [selectedDate]: planId }, workoutLogs: { ...current.workoutLogs, [selectedDate]: {} } }));
   }
+  function updateWorkoutLog(exerciseId, field, value) {
+    setState((current) => ({ ...current, workoutLogs: { ...current.workoutLogs, [selectedDate]: {
+      ...current.workoutLogs[selectedDate], [exerciseId]: { ...current.workoutLogs[selectedDate]?.[exerciseId], [field]: value },
+    } } }));
+  }
+  function updateNumber(field, value) { setState((current) => ({ ...current, [field]: Number(value) || 0 })); }
 
   return (
     <div style={{ minHeight: '100vh', background: '#111827', color: '#f9fafb', padding: '16px 16px 28px', fontFamily: 'Inter, system-ui, sans-serif' }}>
@@ -208,7 +231,7 @@ function App() {
           <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>Weekly review</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', marginBottom: '16px' }}>
             <Metric label="Completions" value={`${totalWeekHabitWins}`} /><Metric label="Best day" value={`${bestWeekDay.count}/${habitTotal}`} />
-            <Metric label="Streak" value={`${state.habitDefinitions[0] ? streakFor(state.habitsByDate, state.habitDefinitions[0].id, selectedDate, today) : 0} days`} />
+            <Metric label="Workout days" value={`${workoutHistory}`} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px' }}>
             {weeklySummaries.map(({ day, count }) => <div key={day} style={{ textAlign: 'center' }}>
@@ -218,43 +241,68 @@ function App() {
           </div>
         </section>
 
+        <section id="workout" style={{ ...cardStyle, borderColor: '#365347' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px', flexWrap: 'wrap' }}>
+            <div><p style={{ color: '#6ee7b7', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Home gym · workout planner</p><h2 style={{ margin: '0 0 5px', fontSize: '1.2rem' }}>{workout.title}</h2><p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>{formatDate(selectedDate)} · {workout.focus}</p></div>
+            <select aria-label="Generate workout plan" value={state.workoutPlans[selectedDate] || ['strengthA', 'conditioning', 'strengthB'][new Date(`${selectedDate}T00:00:00`).getDay() % 3]} onChange={generateWorkout} style={{ ...inputStyle, width: 'auto', maxWidth: '100%' }}>
+              <option value="strengthA">Generate: Strength A</option><option value="strengthB">Generate: Strength B</option><option value="conditioning">Generate: Conditioning &amp; mobility</option>
+            </select>
+          </div>
+          <div style={{ margin: '16px 0', padding: '12px', borderRadius: '12px', background: '#111827', color: '#d1d5db', fontSize: '13px' }}>
+            Warm up for 5–8 minutes with easy treadmill walking or gentle movement before lifting. Keep reps controlled, use a comfortable range of motion, and choose a load that leaves a few good reps in reserve. Stop if you feel sharp pain, dizziness, or unwell.
+          </div>
+          <p style={{ color: '#a7f3d0', fontSize: '13px', margin: '0 0 12px' }}>{completedExercises} of {workout.exercises.length} exercises checked off · changes save on this device</p>
+          {workout.exercises.map((exercise) => {
+            const log = workoutLog[exercise.id] || {};
+            return <div key={exercise.id} style={{ borderTop: '1px solid #374151', padding: '14px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'start', gap: '10px' }}>
+                <input aria-label={`Mark ${exercise.name} complete`} type="checkbox" checked={Boolean(log.done)} onChange={(event) => updateWorkoutLog(exercise.id, 'done', event.target.checked)} style={{ width: '20px', height: '20px', accentColor: '#10b981', marginTop: '2px', flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}><strong>{exercise.name}</strong><div style={{ color: '#9ca3af', fontSize: '12px', marginTop: '4px' }}>{exercise.equipment}</div>
+                  {exercise.duration ? <div style={{ color: '#d1d5db', fontSize: '13px', marginTop: '7px' }}>Target: {exercise.duration} {exercise.unit}</div> : <div style={{ color: '#d1d5db', fontSize: '13px', marginTop: '7px' }}>Target: {exercise.sets} sets · {exercise.reps}{exercise.rest ? ` · Rest ${exercise.rest}` : ''}</div>}
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: exercise.duration ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))', gap: '8px', margin: '10px 0 0 30px' }}>
+                {exercise.duration ? <label style={{ color: '#9ca3af', fontSize: '11px' }}>Actual minutes<input type="number" min="0" value={log.duration ?? ''} onChange={(event) => updateWorkoutLog(exercise.id, 'duration', event.target.value)} placeholder={String(exercise.duration)} style={{ ...inputStyle, padding: '8px', marginTop: '4px' }} /></label> : <>
+                  <label style={{ color: '#9ca3af', fontSize: '11px' }}>Sets done<input type="number" min="0" value={log.sets ?? ''} onChange={(event) => updateWorkoutLog(exercise.id, 'sets', event.target.value)} placeholder={String(exercise.sets)} style={{ ...inputStyle, padding: '8px', marginTop: '4px' }} /></label>
+                  <label style={{ color: '#9ca3af', fontSize: '11px' }}>Reps / notes<input value={log.reps ?? ''} onChange={(event) => updateWorkoutLog(exercise.id, 'reps', event.target.value)} placeholder={exercise.reps} style={{ ...inputStyle, padding: '8px', marginTop: '4px' }} /></label>
+                  <label style={{ color: '#9ca3af', fontSize: '11px' }}>Load (lb)<input type="number" min="0" value={log.load ?? ''} onChange={(event) => updateWorkoutLog(exercise.id, 'load', event.target.value)} placeholder="Optional" style={{ ...inputStyle, padding: '8px', marginTop: '4px' }} /></label>
+                </>}
+              </div>
+            </div>;
+          })}
+          <div style={{ borderTop: '1px solid #374151', paddingTop: '14px', marginTop: '4px' }}>
+            <label style={{ display: 'block', color: '#d1d5db', fontSize: '13px' }}>Session notes
+              <textarea value={state.workoutNotes?.[selectedDate] || ''} onChange={(event) => setState((current) => ({ ...current, workoutNotes: { ...current.workoutNotes, [selectedDate]: event.target.value } }))} placeholder="How did the session feel? Note modifications, energy, or recovery." rows={2} style={{ ...inputStyle, marginTop: '6px', resize: 'vertical' }} />
+            </label>
+            <label style={{ display: 'block', marginTop: '12px', color: '#d1d5db', fontSize: '13px' }}>Optional sauna session (not a workout)<input type="number" min="0" value={state.saunaLogs?.[selectedDate] ?? ''} onChange={(event) => setState((current) => ({ ...current, saunaLogs: { ...current.saunaLogs, [selectedDate]: event.target.value } }))} placeholder="Minutes, or leave blank" style={{ ...inputStyle, marginTop: '6px' }} /></label>
+            <p style={{ color: '#9ca3af', fontSize: '12px', margin: '8px 0 0' }}>Sauna is optional; hydrate, keep sessions comfortable, and skip it if you feel unwell or have been advised to avoid heat exposure.</p>
+          </div>
+        </section>
+
         <section id="habits" style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px', flexWrap: 'wrap' }}>
             <div><h2 style={{ margin: '0 0 5px', fontSize: '1.15rem' }}>Habit tracker</h2><p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>{formatDate(selectedDate)}</p></div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ color: '#a7f3d0', background: '#064e3b', borderRadius: '999px', padding: '6px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}>{completed} of {habitTotal} done</span>
-              <button type="button" onClick={resetSelectedDay} style={buttonStyle}>Reset day</button>
-              <button type="button" onClick={restoreDefaultHabits} style={buttonStyle}>Restore defaults</button>
+              <button type="button" onClick={resetSelectedDay} style={buttonStyle}>Reset day</button><button type="button" onClick={restoreDefaultHabits} style={buttonStyle}>Restore defaults</button>
             </div>
           </div>
           {state.habitDefinitions.map((habit) => {
             const { id, name, icon, color } = habit;
             const streak = streakFor(state.habitsByDate, id, selectedDate, today);
             const best = longestStreakFor(state.habitsByDate, id);
-            const isEditing = editingHabitId === id;
-            return <div key={id} style={{ padding: '12px 0', borderBottom: '1px solid #374151' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <input aria-label={`Mark ${name} complete`} type="checkbox" checked={Boolean(selectedHabits[id])} onChange={() => toggleHabit(id)} style={{ width: '20px', height: '20px', accentColor: color, flexShrink: 0 }} />
-                {isEditing ? <form onSubmit={(event) => { event.preventDefault(); if (saveHabit(editingHabit, id)) setEditingHabitId(null); }} style={{ display: 'flex', flex: 1, alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <input aria-label="Habit name" autoFocus maxLength={60} value={editingHabit.name} onChange={(event) => { setEditingHabit((current) => ({ ...current, name: event.target.value })); setHabitError(''); }} style={{ ...inputStyle, flex: '1 1 130px', width: 'auto', minWidth: 0, padding: '8px 10px' }} />
-                  <input aria-label="Habit icon or emoji" maxLength={8} value={editingHabit.icon} onChange={(event) => setEditingHabit((current) => ({ ...current, icon: event.target.value }))} style={{ ...inputStyle, width: '70px', padding: '8px' }} />
-                  <select aria-label="Habit color" value={editingHabit.color} onChange={(event) => setEditingHabit((current) => ({ ...current, color: event.target.value }))} style={{ ...inputStyle, width: 'auto', padding: '8px' }}>{HABIT_COLORS.map((option) => <option key={option} value={option}>{option}</option>)}</select>
-                  <button type="submit" style={buttonStyle}>Save</button>
-                  <button type="button" onClick={() => { setEditingHabitId(null); setHabitError(''); }} style={buttonStyle}>Cancel</button>
-                </form> : <>
-                  <span style={{ fontSize: '20px' }} aria-hidden="true">{icon}</span>
-                  <span style={{ flex: 1, textTransform: 'capitalize', overflowWrap: 'anywhere' }}>{name}</span>
-                  <span style={{ color: '#9ca3af', fontSize: '12px', whiteSpace: 'nowrap' }}>🔥 {streak} day{streak === 1 ? '' : 's'} · best {best}</span>
-                  <button type="button" aria-label={`Edit ${name}`} onClick={() => { setEditingHabitId(id); setEditingHabit({ name, icon, color }); setHabitError(''); }} style={buttonStyle}>Edit</button>
-                  <button type="button" aria-label={`Delete ${name}`} onClick={() => deleteHabit(habit)} style={{ ...buttonStyle, color: '#fca5a5' }}>Delete</button>
-                </>}
-              </div>
-            </div>;
+            return <div key={id} style={{ padding: '12px 0', borderBottom: '1px solid #374151' }}><div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <input aria-label={`Mark ${name} complete`} type="checkbox" checked={Boolean(selectedHabits[id])} onChange={() => toggleHabit(id)} style={{ width: '20px', height: '20px', accentColor: color, flexShrink: 0 }} />
+              {editingHabitId === id ? <form onSubmit={(event) => { event.preventDefault(); if (saveHabit(editingHabit, id)) setEditingHabitId(null); }} style={{ display: 'flex', flex: 1, alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <input aria-label="Habit name" autoFocus maxLength={60} value={editingHabit.name} onChange={(event) => { setEditingHabit((current) => ({ ...current, name: event.target.value })); setHabitError(''); }} style={{ ...inputStyle, flex: '1 1 130px', width: 'auto', minWidth: 0, padding: '8px 10px' }} />
+                <input aria-label="Habit icon or emoji" maxLength={8} value={editingHabit.icon} onChange={(event) => setEditingHabit((current) => ({ ...current, icon: event.target.value }))} style={{ ...inputStyle, width: '70px', padding: '8px' }} />
+                <select aria-label="Habit color" value={editingHabit.color} onChange={(event) => setEditingHabit((current) => ({ ...current, color: event.target.value }))} style={{ ...inputStyle, width: 'auto', padding: '8px' }}>{HABIT_COLORS.map((option) => <option key={option} value={option}>{option}</option>)}</select>
+                <button type="submit" style={buttonStyle}>Save</button><button type="button" onClick={() => { setEditingHabitId(null); setHabitError(''); }} style={buttonStyle}>Cancel</button>
+              </form> : <><span style={{ fontSize: '20px' }} aria-hidden="true">{icon}</span><span style={{ flex: 1, textTransform: 'capitalize', overflowWrap: 'anywhere' }}>{name}</span><span style={{ color: '#9ca3af', fontSize: '12px', whiteSpace: 'nowrap' }}>🔥 {streak} day{streak === 1 ? '' : 's'} · best {best}</span>
+                <button type="button" aria-label={`Edit ${name}`} onClick={() => { setEditingHabitId(id); setEditingHabit({ name, icon, color }); setHabitError(''); }} style={buttonStyle}>Edit</button><button type="button" aria-label={`Delete ${name}`} onClick={() => deleteHabit(habit)} style={{ ...buttonStyle, color: '#fca5a5' }}>Delete</button></>}
+            </div></div>;
           })}
-          <form onSubmit={addHabit} style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
-            <input aria-label="New habit name" value={newHabitName} onChange={(event) => { setNewHabitName(event.target.value); setHabitError(''); }} placeholder="Add a habit" maxLength={60} style={{ ...inputStyle, minWidth: 0 }} />
-            <button type="submit" style={{ ...buttonStyle, background: '#065f46', borderColor: '#047857', whiteSpace: 'nowrap' }}>Add habit</button>
-          </form>
+          <form onSubmit={addHabit} style={{ display: 'flex', gap: '8px', marginTop: '14px' }}><input aria-label="New habit name" value={newHabitName} onChange={(event) => { setNewHabitName(event.target.value); setHabitError(''); }} placeholder="Add a habit" maxLength={60} style={{ ...inputStyle, minWidth: 0 }} /><button type="submit" style={{ ...buttonStyle, background: '#065f46', borderColor: '#047857', whiteSpace: 'nowrap' }}>Add habit</button></form>
           {habitError && <p role="alert" style={{ color: '#fca5a5', fontSize: '13px', margin: '8px 0 0' }}>{habitError}</p>}
           <p style={{ color: '#6b7280', fontSize: '12px', margin: '12px 0 0' }}>Streaks count consecutive completed days. Habits and history save automatically on this device.</p>
         </section>
@@ -262,38 +310,28 @@ function App() {
         <section id="journal" style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
             <div><h2 style={{ margin: '0 0 5px', fontSize: '1.15rem' }}>Journal</h2><p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>{entryCount} day{entryCount === 1 ? '' : 's'} with notes</p></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button type="button" aria-label="Previous day" onClick={() => setSelectedDate((day) => shiftDate(day, -1))} style={buttonStyle}>←</button>
-              <input aria-label="Select journal date" type="date" value={selectedDate} max={today} onChange={(event) => event.target.value && setSelectedDate(event.target.value)} style={{ ...inputStyle, width: 'auto', minWidth: '145px', padding: '9px' }} />
-              <button type="button" aria-label="Next day" disabled={selectedDate >= today} onClick={() => setSelectedDate((day) => shiftDate(day, 1))} style={{ ...buttonStyle, opacity: selectedDate >= today ? 0.45 : 1 }}>→</button>
-            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><button type="button" aria-label="Previous day" onClick={() => setSelectedDate((day) => shiftDate(day, -1))} style={buttonStyle}>←</button><input aria-label="Select journal date" type="date" value={selectedDate} max={today} onChange={(event) => event.target.value && setSelectedDate(event.target.value)} style={{ ...inputStyle, width: 'auto', minWidth: '145px', padding: '9px' }} /><button type="button" aria-label="Next day" disabled={selectedDate >= today} onClick={() => setSelectedDate((day) => shiftDate(day, 1))} style={{ ...buttonStyle, opacity: selectedDate >= today ? 0.45 : 1 }}>→</button></div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px', marginBottom: '12px' }}>
             <label><span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>Mood</span><select value={entry.mood || 'balanced'} onChange={(event) => updateEntry('mood', event.target.value)} style={inputStyle}><option value="happy">Happy</option><option value="balanced">Balanced</option><option value="tired">Tired</option><option value="stress">Stressed</option><option value="focused">Focused</option></select></label>
             <label><span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>Energy</span><input type="range" min="1" max="10" value={Number(entry.energy || 7)} onChange={(event) => updateEntry('energy', event.target.value)} style={{ width: '100%', accentColor: '#10b981' }} /><div style={{ color: '#9ca3af', fontSize: '12px', marginTop: '4px' }}>{entry.energy || 7}/10</div></label>
           </div>
-          <TextArea label="Journal entry" value={entry.journal} onChange={(value) => updateEntry('journal', value)} placeholder="What stood out today?" />
-          <TextArea label="Recovery notes" value={entry.recovery} onChange={(value) => updateEntry('recovery', value)} placeholder="How is your body feeling?" />
+          <TextArea label="Journal entry" value={entry.journal} onChange={(value) => updateEntry('journal', value)} placeholder="What stood out today?" /><TextArea label="Recovery notes" value={entry.recovery} onChange={(value) => updateEntry('recovery', value)} placeholder="How is your body feeling?" />
           <label style={{ display: 'block', marginTop: '14px' }}><span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>Daily intention</span><input value={entry.notes} onChange={(event) => updateEntry('notes', event.target.value)} placeholder="A small thing to focus on" style={inputStyle} /></label>
           <p style={{ color: '#6b7280', fontSize: '12px', margin: '12px 0 0' }}>Entries and habit history save automatically on this device.</p>
         </section>
 
-        <section id="goals" style={cardStyle}>
-          <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>Weight &amp; goals</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-            <label><span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>Current weight (lbs)</span><input type="number" min="0" value={state.weight} onChange={(event) => updateNumber('weight', event.target.value)} style={inputStyle} /></label>
-            <label><span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>Goal weight (lbs)</span><input type="number" min="0" value={state.goalWeight} onChange={(event) => updateNumber('goalWeight', event.target.value)} style={inputStyle} /></label>
-          </div>
-        </section>
+        <section id="goals" style={cardStyle}><h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>Weight &amp; goals</h2><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+          <label><span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>Current weight (lbs)</span><input type="number" min="0" value={state.weight} onChange={(event) => updateNumber('weight', event.target.value)} style={inputStyle} /></label><label><span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>Goal weight (lbs)</span><input type="number" min="0" value={state.goalWeight} onChange={(event) => updateNumber('goalWeight', event.target.value)} style={inputStyle} /></label>
+        </div></section>
 
         <nav aria-label="Main navigation" style={{ position: 'sticky', bottom: '12px', background: 'rgba(31,41,55,0.96)', border: '1px solid #374151', borderRadius: '16px', padding: '10px 6px', display: 'flex', justifyContent: 'space-around', marginTop: '20px', backdropFilter: 'blur(12px)' }}>
-          <NavLink href="#home" icon="🏠" label="Home" /><NavLink href="#weekly" icon="📊" label="Week" /><NavLink href="#habits" icon="✅" label="Habits" /><NavLink href="#journal" icon="📓" label="Journal" /><NavLink href="#goals" icon="🎯" label="Goals" />
+          <NavLink href="#home" icon="🏠" label="Home" /><NavLink href="#weekly" icon="📊" label="Week" /><NavLink href="#workout" icon="🏋️" label="Workout" /><NavLink href="#habits" icon="✅" label="Habits" /><NavLink href="#journal" icon="📓" label="Journal" /><NavLink href="#goals" icon="🎯" label="Goals" />
         </nav>
       </main>
     </div>
   );
 }
-
 function Metric({ label, value }) {
   return <div style={{ background: 'rgba(17,24,39,0.65)', borderRadius: '12px', padding: '12px 10px', minWidth: 0 }}><div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '5px' }}>{label}</div><div style={{ fontWeight: 700, fontSize: '15px', overflowWrap: 'anywhere' }}>{value}</div></div>;
 }
@@ -301,7 +339,6 @@ function TextArea({ label, value, onChange, placeholder }) {
   return <label style={{ display: 'block', marginTop: '14px' }}><span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>{label}</span><textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} rows={4} style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }} /></label>;
 }
 function NavLink({ href, icon, label }) {
-  return <a href={href} style={{ color: '#d1d5db', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '4px 8px', fontSize: '11px' }}><span aria-hidden="true" style={{ fontSize: '19px' }}>{icon}</span><span>{label}</span></a>;
+  return <a href={href} style={{ color: '#d1d5db', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '4px 6px', fontSize: '10px' }}><span aria-hidden="true" style={{ fontSize: '19px' }}>{icon}</span><span>{label}</span></a>;
 }
-
 export default App;
