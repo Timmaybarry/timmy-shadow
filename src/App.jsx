@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'timmy-shadow-state';
-const DEFAULT_HABITS = ['sleep', 'hydration', 'movement', 'focus', 'mindfulness'];
+const DEFAULT_HABITS = [
+  { id: 'sleep', name: 'sleep', icon: '😴', color: '#818cf8' },
+  { id: 'hydration', name: 'hydration', icon: '💧', color: '#38bdf8' },
+  { id: 'movement', name: 'movement', icon: '🏃', color: '#34d399' },
+  { id: 'focus', name: 'focus', icon: '🎯', color: '#fbbf24' },
+  { id: 'mindfulness', name: 'mindfulness', icon: '🧘', color: '#c084fc' },
+];
+const HABIT_COLORS = ['#34d399', '#38bdf8', '#818cf8', '#c084fc', '#f472b6', '#fb7185', '#fbbf24', '#fb923c'];
 const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const cardStyle = { background: '#1f2937', border: '1px solid #293548', borderRadius: '18px', padding: '20px', marginBottom: '16px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)' };
 const inputStyle = { width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1px solid #374151', background: '#111827', color: '#f9fafb', fontSize: '16px', boxSizing: 'border-box' };
@@ -22,16 +29,14 @@ function makeDefaultState(today) {
   return {
     weight: 185,
     goalWeight: 160,
-    habitDefinitions: DEFAULT_HABITS.map((name) => ({ id: name, name })),
+    habitDefinitions: DEFAULT_HABITS,
     habitsByDate: { [today]: { sleep: true, hydration: true, movement: false, focus: true, mindfulness: false } },
-    entries: {
-      [today]: {
-        journal: 'Today felt grounded. I kept my routine simple and took small moves toward the goals that matter most.',
-        recovery: 'Felt a little sore after the workout, but recovery is improving. Stretching and walking helped a lot.',
-        notes: 'Keep the day gentle. Protect energy and stay consistent with the basics.',
-        mood: 'balanced', energy: '7',
-      },
-    },
+    entries: { [today]: {
+      journal: 'Today felt grounded. I kept my routine simple and took small moves toward the goals that matter most.',
+      recovery: 'Felt a little sore after the workout, but recovery is improving. Stretching and walking helped a lot.',
+      notes: 'Keep the day gentle. Protect energy and stay consistent with the basics.',
+      mood: 'balanced', energy: '7',
+    } },
   };
 }
 function loadState(today) {
@@ -39,42 +44,45 @@ function loadState(today) {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     if (!saved || typeof saved !== 'object') return defaults;
+    const savedHabits = Array.isArray(saved.habitDefinitions) ? saved.habitDefinitions : [];
+    const habitDefinitions = savedHabits.length
+      ? savedHabits.filter((habit) => habit && habit.id && habit.name).map((habit) => {
+        const defaultHabit = DEFAULT_HABITS.find((item) => item.id === habit.id);
+        return { ...defaultHabit, ...habit, icon: habit.icon || defaultHabit?.icon || '✨', color: habit.color || defaultHabit?.color || '#34d399' };
+      })
+      : defaults.habitDefinitions;
     return {
       weight: Number(saved.weight) || defaults.weight,
       goalWeight: Number(saved.goalWeight) || defaults.goalWeight,
-      habitDefinitions: Array.isArray(saved.habitDefinitions) && saved.habitDefinitions.length
-        ? saved.habitDefinitions.filter((habit) => habit && habit.id && habit.name)
-        : defaults.habitDefinitions,
+      habitDefinitions,
       habitsByDate: saved.habitsByDate || { [today]: saved.habits || defaults.habitsByDate[today] },
-      entries: saved.entries || {
-        [today]: {
-          journal: saved.journal ?? defaults.entries[today].journal,
-          recovery: saved.recovery ?? defaults.entries[today].recovery,
-          notes: saved.notes ?? defaults.entries[today].notes,
-          mood: saved.mood ?? defaults.entries[today].mood,
-          energy: saved.energy ?? defaults.entries[today].energy,
-        },
-      },
+      entries: saved.entries || { [today]: {
+        journal: saved.journal ?? defaults.entries[today].journal,
+        recovery: saved.recovery ?? defaults.entries[today].recovery,
+        notes: saved.notes ?? defaults.entries[today].notes,
+        mood: saved.mood ?? defaults.entries[today].mood,
+        energy: saved.energy ?? defaults.entries[today].energy,
+      } },
     };
   } catch {
     return defaults;
   }
 }
-function isComplete(habitsByDate, habit, day) {
-  return Boolean(habitsByDate[day]?.[habit]);
+function isComplete(habitsByDate, habitId, day) {
+  return Boolean(habitsByDate[day]?.[habitId]);
 }
-function streakFor(habitsByDate, habit, endingDay, today) {
+function streakFor(habitsByDate, habitId, endingDay, today) {
   let cursor = endingDay;
-  if (cursor === today && !isComplete(habitsByDate, habit, cursor)) cursor = shiftDate(cursor, -1);
+  if (cursor === today && !isComplete(habitsByDate, habitId, cursor)) cursor = shiftDate(cursor, -1);
   let streak = 0;
-  while (isComplete(habitsByDate, habit, cursor)) {
+  while (isComplete(habitsByDate, habitId, cursor)) {
     streak += 1;
     cursor = shiftDate(cursor, -1);
   }
   return streak;
 }
-function longestStreakFor(habitsByDate, habit) {
-  const completedDays = Object.keys(habitsByDate).filter((day) => isComplete(habitsByDate, habit, day)).sort();
+function longestStreakFor(habitsByDate, habitId) {
+  const completedDays = Object.keys(habitsByDate).filter((day) => isComplete(habitsByDate, habitId, day)).sort();
   let best = 0;
   let run = 0;
   let previous = null;
@@ -95,7 +103,7 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [newHabitName, setNewHabitName] = useState('');
   const [editingHabitId, setEditingHabitId] = useState(null);
-  const [editingHabitName, setEditingHabitName] = useState('');
+  const [editingHabit, setEditingHabit] = useState({ name: '', icon: '', color: '#34d399' });
   const [habitError, setHabitError] = useState('');
 
   useEffect(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(state)), [state]);
@@ -103,6 +111,7 @@ function App() {
   const entry = state.entries[selectedDate] || { journal: '', recovery: '', notes: '', mood: 'balanced', energy: '7' };
   const selectedHabits = state.habitsByDate[selectedDate] || {};
   const completed = state.habitDefinitions.filter(({ id }) => selectedHabits[id]).length;
+  const habitTotal = state.habitDefinitions.length;
   const weightRange = 200 - state.goalWeight;
   const percent = weightRange > 0 ? Math.min(Math.max(((200 - state.weight) / weightRange) * 100, 0), 100) : 0;
   const entryCount = Object.values(state.entries).filter((item) => Object.values(item).some((value) => String(value || '').trim())).length;
@@ -112,14 +121,12 @@ function App() {
     if (percent >= 40) return 'Steady progress';
     return 'Building consistency';
   }, [percent, state.weight, state.goalWeight]);
-  const weekDates = Array.from({ length: 7 }, (_, index) => shiftDate(today, index - 6));
-  const weeklySummaries = weekDates.map((day) => ({
-    day,
-    count: state.habitDefinitions.filter(({ id }) => isComplete(state.habitsByDate, id, day)).length,
-  }));
+  const weeklySummaries = Array.from({ length: 7 }, (_, index) => {
+    const day = shiftDate(today, index - 6);
+    return { day, count: state.habitDefinitions.filter(({ id }) => isComplete(state.habitsByDate, id, day)).length };
+  });
   const bestWeekDay = weeklySummaries.reduce((best, current) => current.count > best.count ? current : best, weeklySummaries[0]);
   const totalWeekHabitWins = weeklySummaries.reduce((sum, item) => sum + item.count, 0);
-  const habitTotal = state.habitDefinitions.length;
 
   function updateEntry(field, value) {
     setState((current) => ({ ...current, entries: { ...current.entries, [selectedDate]: {
@@ -132,8 +139,8 @@ function App() {
       ...current.habitsByDate[selectedDate], [habitId]: !current.habitsByDate[selectedDate]?.[habitId],
     } } }));
   }
-  function saveHabitName(rawName, habitId = null) {
-    const name = rawName.trim();
+  function saveHabit(rawHabit, habitId = null) {
+    const name = rawHabit.name.trim();
     if (!name) {
       setHabitError('Enter a habit name.');
       return false;
@@ -142,18 +149,37 @@ function App() {
       setHabitError('A habit with that name already exists.');
       return false;
     }
-    setState((current) => ({
-      ...current,
-      habitDefinitions: habitId
-        ? current.habitDefinitions.map((habit) => habit.id === habitId ? { ...habit, name } : habit)
-        : [...current.habitDefinitions, { id: createHabitId(), name }],
+    setState((current) => ({ ...current, habitDefinitions: habitId
+      ? current.habitDefinitions.map((habit) => habit.id === habitId ? { ...habit, ...rawHabit, name } : habit)
+      : [...current.habitDefinitions, { ...rawHabit, id: createHabitId(), name, icon: rawHabit.icon.trim() || '✨' }],
     }));
     setHabitError('');
     return true;
   }
   function addHabit(event) {
     event.preventDefault();
-    if (saveHabitName(newHabitName)) setNewHabitName('');
+    if (saveHabit({ name: newHabitName, icon: '✨', color: '#34d399' })) setNewHabitName('');
+  }
+  function deleteHabit(habit) {
+    if (!window.confirm(`Delete “${habit.name}” and its completion history? This cannot be undone.`)) return;
+    setState((current) => {
+      const habitsByDate = Object.fromEntries(Object.entries(current.habitsByDate).map(([day, habits]) => {
+        const { [habit.id]: removed, ...remaining } = habits;
+        return [day, remaining];
+      }));
+      return { ...current, habitDefinitions: current.habitDefinitions.filter((item) => item.id !== habit.id), habitsByDate };
+    });
+    if (editingHabitId === habit.id) setEditingHabitId(null);
+  }
+  function resetSelectedDay() {
+    if (!window.confirm(`Clear all habit completions for ${formatDate(selectedDate)}?`)) return;
+    setState((current) => ({ ...current, habitsByDate: { ...current.habitsByDate, [selectedDate]: {} } }));
+  }
+  function restoreDefaultHabits() {
+    if (!window.confirm('Restore the five default habits? Custom habits will be removed, but existing completion history for matching default habits will remain.')) return;
+    setState((current) => ({ ...current, habitDefinitions: DEFAULT_HABITS }));
+    setEditingHabitId(null);
+    setHabitError('');
   }
   function updateNumber(field, value) {
     setState((current) => ({ ...current, [field]: Number(value) || 0 }));
@@ -172,9 +198,7 @@ function App() {
           <p style={{ color: '#a7f3d0', fontSize: '13px', fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Today's focus</p>
           <h2 style={{ fontSize: '1.35rem', margin: '0 0 16px' }}>{headline}</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px' }}>
-            <Metric label="Weight" value={`${state.weight} lbs`} />
-            <Metric label="Goal" value={`${state.goalWeight} lbs`} />
-            <Metric label="Habits" value={`${completed}/${habitTotal}`} />
+            <Metric label="Weight" value={`${state.weight} lbs`} /><Metric label="Goal" value={`${state.goalWeight} lbs`} /><Metric label="Habits" value={`${completed}/${habitTotal}`} />
           </div>
           <div style={{ height: '8px', background: '#374151', borderRadius: '999px', overflow: 'hidden', marginTop: '18px' }}><div style={{ width: `${percent}%`, background: '#10b981', height: '100%', transition: 'width 180ms ease' }} /></div>
           <p style={{ color: '#9ca3af', fontSize: '13px', margin: '8px 0 0' }}>Weight goal progress · {Math.round(percent)}%</p>
@@ -183,8 +207,7 @@ function App() {
         <section id="weekly" style={cardStyle}>
           <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>Weekly review</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', marginBottom: '16px' }}>
-            <Metric label="Completions" value={`${totalWeekHabitWins}`} />
-            <Metric label="Best day" value={`${bestWeekDay.count}/${habitTotal}`} />
+            <Metric label="Completions" value={`${totalWeekHabitWins}`} /><Metric label="Best day" value={`${bestWeekDay.count}/${habitTotal}`} />
             <Metric label="Streak" value={`${state.habitDefinitions[0] ? streakFor(state.habitsByDate, state.habitDefinitions[0].id, selectedDate, today) : 0} days`} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px' }}>
@@ -196,25 +219,36 @@ function App() {
         </section>
 
         <section id="habits" style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px', flexWrap: 'wrap' }}>
             <div><h2 style={{ margin: '0 0 5px', fontSize: '1.15rem' }}>Habit tracker</h2><p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>{formatDate(selectedDate)}</p></div>
-            <span style={{ color: '#a7f3d0', background: '#064e3b', borderRadius: '999px', padding: '6px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}>{completed} of {habitTotal} done</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ color: '#a7f3d0', background: '#064e3b', borderRadius: '999px', padding: '6px 10px', fontSize: '12px', whiteSpace: 'nowrap' }}>{completed} of {habitTotal} done</span>
+              <button type="button" onClick={resetSelectedDay} style={buttonStyle}>Reset day</button>
+              <button type="button" onClick={restoreDefaultHabits} style={buttonStyle}>Restore defaults</button>
+            </div>
           </div>
-          {state.habitDefinitions.map(({ id, name }) => {
+          {state.habitDefinitions.map((habit) => {
+            const { id, name, icon, color } = habit;
             const streak = streakFor(state.habitsByDate, id, selectedDate, today);
             const best = longestStreakFor(state.habitsByDate, id);
             const isEditing = editingHabitId === id;
-            return <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 0', borderBottom: '1px solid #374151' }}>
-              <input aria-label={`Mark ${name} complete`} type="checkbox" checked={Boolean(selectedHabits[id])} onChange={() => toggleHabit(id)} style={{ width: '20px', height: '20px', accentColor: '#10b981', flexShrink: 0 }} />
-              {isEditing ? <form onSubmit={(event) => { event.preventDefault(); if (saveHabitName(editingHabitName, id)) setEditingHabitId(null); }} style={{ display: 'flex', flex: 1, gap: '8px' }}>
-                <input aria-label="Habit name" autoFocus value={editingHabitName} onChange={(event) => { setEditingHabitName(event.target.value); setHabitError(''); }} style={{ ...inputStyle, padding: '8px 10px', minWidth: 0 }} />
-                <button type="submit" style={buttonStyle}>Save</button>
-                <button type="button" onClick={() => { setEditingHabitId(null); setHabitError(''); }} style={buttonStyle}>Cancel</button>
-              </form> : <>
-                <span style={{ flex: 1, textTransform: 'capitalize', overflowWrap: 'anywhere' }}>{name}</span>
-                <span style={{ color: '#9ca3af', fontSize: '12px', whiteSpace: 'nowrap' }}>🔥 {streak} day{streak === 1 ? '' : 's'} · best {best}</span>
-                <button type="button" aria-label={`Edit ${name}`} onClick={() => { setEditingHabitId(id); setEditingHabitName(name); setHabitError(''); }} style={buttonStyle}>Edit</button>
-              </>}
+            return <div key={id} style={{ padding: '12px 0', borderBottom: '1px solid #374151' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <input aria-label={`Mark ${name} complete`} type="checkbox" checked={Boolean(selectedHabits[id])} onChange={() => toggleHabit(id)} style={{ width: '20px', height: '20px', accentColor: color, flexShrink: 0 }} />
+                {isEditing ? <form onSubmit={(event) => { event.preventDefault(); if (saveHabit(editingHabit, id)) setEditingHabitId(null); }} style={{ display: 'flex', flex: 1, alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <input aria-label="Habit name" autoFocus maxLength={60} value={editingHabit.name} onChange={(event) => { setEditingHabit((current) => ({ ...current, name: event.target.value })); setHabitError(''); }} style={{ ...inputStyle, flex: '1 1 130px', width: 'auto', minWidth: 0, padding: '8px 10px' }} />
+                  <input aria-label="Habit icon or emoji" maxLength={8} value={editingHabit.icon} onChange={(event) => setEditingHabit((current) => ({ ...current, icon: event.target.value }))} style={{ ...inputStyle, width: '70px', padding: '8px' }} />
+                  <select aria-label="Habit color" value={editingHabit.color} onChange={(event) => setEditingHabit((current) => ({ ...current, color: event.target.value }))} style={{ ...inputStyle, width: 'auto', padding: '8px' }}>{HABIT_COLORS.map((option) => <option key={option} value={option}>{option}</option>)}</select>
+                  <button type="submit" style={buttonStyle}>Save</button>
+                  <button type="button" onClick={() => { setEditingHabitId(null); setHabitError(''); }} style={buttonStyle}>Cancel</button>
+                </form> : <>
+                  <span style={{ fontSize: '20px' }} aria-hidden="true">{icon}</span>
+                  <span style={{ flex: 1, textTransform: 'capitalize', overflowWrap: 'anywhere' }}>{name}</span>
+                  <span style={{ color: '#9ca3af', fontSize: '12px', whiteSpace: 'nowrap' }}>🔥 {streak} day{streak === 1 ? '' : 's'} · best {best}</span>
+                  <button type="button" aria-label={`Edit ${name}`} onClick={() => { setEditingHabitId(id); setEditingHabit({ name, icon, color }); setHabitError(''); }} style={buttonStyle}>Edit</button>
+                  <button type="button" aria-label={`Delete ${name}`} onClick={() => deleteHabit(habit)} style={{ ...buttonStyle, color: '#fca5a5' }}>Delete</button>
+                </>}
+              </div>
             </div>;
           })}
           <form onSubmit={addHabit} style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
@@ -222,7 +256,7 @@ function App() {
             <button type="submit" style={{ ...buttonStyle, background: '#065f46', borderColor: '#047857', whiteSpace: 'nowrap' }}>Add habit</button>
           </form>
           {habitError && <p role="alert" style={{ color: '#fca5a5', fontSize: '13px', margin: '8px 0 0' }}>{habitError}</p>}
-          <p style={{ color: '#6b7280', fontSize: '12px', margin: '12px 0 0' }}>Streaks count consecutive completed days. Habit changes and history save automatically on this device.</p>
+          <p style={{ color: '#6b7280', fontSize: '12px', margin: '12px 0 0' }}>Streaks count consecutive completed days. Habits and history save automatically on this device.</p>
         </section>
 
         <section id="journal" style={cardStyle}>
