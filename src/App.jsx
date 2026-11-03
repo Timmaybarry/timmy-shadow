@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 const STORAGE_KEY = 'timmy-shadow-state';
 const HABIT_NAMES = ['sleep', 'hydration', 'movement', 'focus', 'mindfulness'];
+const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const cardStyle = {
   background: '#1f2937',
   border: '1px solid #293548',
@@ -48,6 +49,15 @@ function formatDate(key, options = { weekday: 'long', month: 'long', day: 'numer
   return new Date(year, month - 1, day).toLocaleDateString(undefined, options);
 }
 
+function getLastSevenDays() {
+  const today = new Date();
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (6 - index));
+    return dateKey(date);
+  });
+}
+
 function makeDefaultState(today) {
   return {
     weight: 185,
@@ -66,6 +76,8 @@ function makeDefaultState(today) {
         journal: 'Today felt grounded. I kept my routine simple and took small moves toward the goals that matter most.',
         recovery: 'Felt a little sore after the workout, but recovery is improving. Stretching and walking helped a lot.',
         notes: 'Keep the day gentle. Protect energy and stay consistent with the basics.',
+        mood: 'balanced',
+        energy: '7',
       },
     },
   };
@@ -77,7 +89,6 @@ function loadState(today) {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
     if (!saved || typeof saved !== 'object') return defaults;
 
-    // Migrate the first version's single-day fields into date-keyed history.
     const habitsByDate = saved.habitsByDate || {
       [today]: saved.habits || defaults.habitsByDate[today],
     };
@@ -86,6 +97,8 @@ function loadState(today) {
         journal: saved.journal ?? defaults.entries[today].journal,
         recovery: saved.recovery ?? defaults.entries[today].recovery,
         notes: saved.notes ?? defaults.entries[today].notes,
+        mood: saved.mood ?? defaults.entries[today].mood,
+        energy: saved.energy ?? defaults.entries[today].energy,
       },
     };
 
@@ -106,7 +119,6 @@ function isComplete(habitsByDate, habit, day) {
 
 function streakFor(habitsByDate, habit, endingDay, today) {
   let cursor = endingDay;
-  // An unfinished current day doesn't erase the streak earned through yesterday.
   if (cursor === today && !isComplete(habitsByDate, habit, cursor)) {
     cursor = shiftDate(cursor, -1);
   }
@@ -144,7 +156,7 @@ function App() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
-  const entry = state.entries[selectedDate] || { journal: '', recovery: '', notes: '' };
+  const entry = state.entries[selectedDate] || { journal: '', recovery: '', notes: '', mood: 'balanced', energy: '7' };
   const selectedHabits = state.habitsByDate[selectedDate] || {};
   const completed = HABIT_NAMES.filter((habit) => selectedHabits[habit]).length;
   const weightRange = 200 - state.goalWeight;
@@ -162,6 +174,14 @@ function App() {
     return 'Building consistency';
   }, [percent, state.weight, state.goalWeight]);
 
+  const weekDates = getLastSevenDays();
+  const weeklySummaries = weekDates.map((day) => ({
+    day,
+    count: HABIT_NAMES.filter((habit) => isComplete(state.habitsByDate, habit, day)).length,
+  }));
+  const bestWeekDay = weeklySummaries.reduce((best, current) => current.count > best.count ? current : best, weeklySummaries[0]);
+  const totalWeekHabitWins = weeklySummaries.reduce((sum, item) => sum + item.count, 0);
+
   function updateEntry(field, value) {
     setState((current) => ({
       ...current,
@@ -171,6 +191,8 @@ function App() {
           journal: '',
           recovery: '',
           notes: '',
+          mood: 'balanced',
+          energy: '7',
           ...current.entries[selectedDate],
           [field]: value,
         },
@@ -230,6 +252,39 @@ function App() {
           <p style={{ color: '#9ca3af', fontSize: '13px', margin: '8px 0 0' }}>Weight goal progress · {Math.round(percent)}%</p>
         </section>
 
+        <section id="weekly" style={cardStyle}>
+          <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>Weekly review</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', marginBottom: '16px' }}>
+            <Metric label="Completions" value={`${totalWeekHabitWins}`} />
+            <Metric label="Best day" value={bestWeekDay ? `${bestWeekDay.count}/5` : '0/5'} />
+            <Metric label="Streak" value={`${streakFor(state.habitsByDate, 'mindfulness', selectedDate, today)} days`} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px' }}>
+            {weeklySummaries.map(({ day, count }) => (
+              <div key={day} style={{ textAlign: 'center' }}>
+                <div style={{ color: '#9ca3af', fontSize: '10px', marginBottom: '8px' }}>{WEEK_DAYS[new Date(day).getDay()]}</div>
+                <div
+                  style={{
+                    width: '100%',
+                    minHeight: '52px',
+                    borderRadius: '10px',
+                    background: count === 0 ? '#1f2937' : count >= 4 ? '#10b981' : count >= 2 ? '#f59e0b' : '#374151',
+                    border: '1px solid #374151',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    color: '#f9fafb',
+                  }}
+                >
+                  {count}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <section id="habits" style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px' }}>
             <div>
@@ -274,6 +329,25 @@ function App() {
               <button type="button" aria-label="Next day" disabled={selectedDate >= today} onClick={() => setSelectedDate((day) => shiftDate(day, 1))} style={{ ...buttonStyle, opacity: selectedDate >= today ? 0.45 : 1 }}>→</button>
             </div>
           </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px', marginBottom: '12px' }}>
+            <label>
+              <span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>Mood</span>
+              <select value={entry.mood || 'balanced'} onChange={(event) => updateEntry('mood', event.target.value)} style={inputStyle}>
+                <option value="happy">Happy</option>
+                <option value="balanced">Balanced</option>
+                <option value="tired">Tired</option>
+                <option value="stress">Stressed</option>
+                <option value="focused">Focused</option>
+              </select>
+            </label>
+            <label>
+              <span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>Energy</span>
+              <input type="range" min="1" max="10" value={Number(entry.energy || 7)} onChange={(event) => updateEntry('energy', event.target.value)} style={{ width: '100%', accentColor: '#10b981' }} />
+              <div style={{ color: '#9ca3af', fontSize: '12px', marginTop: '4px' }}>{entry.energy || 7}/10</div>
+            </label>
+          </div>
+
           <TextArea label="Journal entry" value={entry.journal} onChange={(value) => updateEntry('journal', value)} placeholder="What stood out today?" />
           <TextArea label="Recovery notes" value={entry.recovery} onChange={(value) => updateEntry('recovery', value)} placeholder="How is your body feeling?" />
           <label style={{ display: 'block', marginTop: '14px' }}>
@@ -299,6 +373,7 @@ function App() {
 
         <nav aria-label="Main navigation" style={{ position: 'sticky', bottom: '12px', background: 'rgba(31,41,55,0.96)', border: '1px solid #374151', borderRadius: '16px', padding: '10px 6px', display: 'flex', justifyContent: 'space-around', marginTop: '20px', backdropFilter: 'blur(12px)' }}>
           <NavLink href="#home" icon="🏠" label="Home" />
+          <NavLink href="#weekly" icon="📊" label="Week" />
           <NavLink href="#habits" icon="✅" label="Habits" />
           <NavLink href="#journal" icon="📓" label="Journal" />
           <NavLink href="#goals" icon="🎯" label="Goals" />
