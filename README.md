@@ -1,4 +1,2 @@
-node_modules
-dist
-.vite
-.DS_Store
+# timmy-shadow
+A personal repo for timmy-shadow
