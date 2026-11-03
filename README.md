@@ -1,2 +1,4 @@
-# timmy-shadow
-A personal repo for timmy-shadow
+node_modules
+dist
+.vite
+.DS_Store
