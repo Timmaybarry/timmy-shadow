@@ -15,7 +15,7 @@ const shift = (k, n) => { const d = parse(k); d.setDate(d.getDate() + n); return
 const uid = () => Math.random().toString(36).slice(2, 10);
 const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 
-const empty = { events: [], todos: [], days: {}, monthGoals: {}, yearGoals: {}, memos: '' };
+const empty = { events: [], todos: [], habits: [], habitLog: {}, days: {}, monthGoals: {}, yearGoals: {}, memos: '' };
 function load() {
   try { return { ...empty, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return empty; }
 }
@@ -37,6 +37,28 @@ export default function JibunTecho() {
     setEditing(null);
   };
   const newEvent = (k) => setEditing({ id: uid(), date: k, start: '09:00', end: '10:00', title: '', color: COLORS[0], isNew: true });
+
+  const [habitText, setHabitText] = useState('');
+  const doneOn = (k, id) => (s.habitLog[k] || []).includes(id);
+  const toggleHabit = (k, id) => {
+    const cur = s.habitLog[k] || [];
+    upd({ habitLog: { ...s.habitLog, [k]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] } });
+  };
+  const streak = (id) => {
+    let k = today, n = 0;
+    if (!doneOn(k, id)) k = shift(k, -1);
+    while (doneOn(k, id)) { n++; k = shift(k, -1); }
+    return n;
+  };
+  const addHabit = () => {
+    if (!habitText.trim()) return;
+    upd({ habits: [...s.habits, { id: uid(), name: habitText.trim() }] });
+    setHabitText('');
+  };
+  const removeHabit = (id) => {
+    if (window.confirm('Delete this habit and its history?')) upd({ habits: s.habits.filter((h) => h.id !== id) });
+  };
+  const toggleTodo = (id) => upd({ todos: s.todos.map((x) => (x.id === id ? { ...x, done: !x.done } : x)) });
 
   const ym = date.slice(0, 7);
   const year = date.slice(0, 4);
@@ -167,14 +189,71 @@ export default function JibunTecho() {
         <h3>To-do</h3>
         {todos.map((t) => (
           <div key={t.id} className="jt-row">
-            <input type="checkbox" checked={t.done} onChange={() => upd({ todos: s.todos.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)) })} />
+            <input type="checkbox" checked={t.done} onChange={() => toggleTodo(t.id)} />
             <span className={`t ${t.done ? 'done' : ''}`}>{t.text}</span>
             <button className="d" aria-label="Delete" onClick={() => upd({ todos: s.todos.filter((x) => x.id !== t.id) })}>✕</button>
           </div>
         ))}
         <div className="jt-row"><input placeholder="New to-do" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} /><button className="p" onClick={add}>Add</button></div>
+        <h3>Habits</h3>
+        {s.habits.length === 0 && <p><small>No habits yet. Add some in the Habits tab.</small></p>}
+        {s.habits.map((h) => (
+          <div key={h.id} className="jt-row">
+            <input type="checkbox" checked={doneOn(date, h.id)} onChange={() => toggleHabit(date, h.id)} />
+            <span className="t">{h.name}</span><small>🔥 {streak(h.id)}</small>
+          </div>
+        ))}
         <h3>Diary / notes</h3>
         <textarea value={info.diary || ''} onChange={(e) => setInfo({ diary: e.target.value })} placeholder="How was today?" />
+      </>
+    );
+  }
+
+  function Tasks() {
+    const pending = s.todos.filter((t) => !t.done).sort((a, b) => a.date.localeCompare(b.date));
+    const doneCount = s.todos.length - pending.length;
+    const groups = pending.reduce((g, t) => ((g[t.date] = g[t.date] || []).push(t), g), {});
+    return (
+      <>
+        <div className="jt-head"><h2>Tasks</h2><small>{doneCount}/{s.todos.length} done</small></div>
+        {pending.length === 0 && <p><small>Nothing open. Add tasks from a Day page.</small></p>}
+        {Object.keys(groups).map((k) => (
+          <div key={k}>
+            <h3 style={k < today ? { color: '#b42318' } : undefined}>
+              {k < today ? 'Overdue · ' : k === today ? 'Today · ' : ''}{parse(k).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+            </h3>
+            {groups[k].map((t) => (
+              <div key={t.id} className="jt-row">
+                <input type="checkbox" checked={false} onChange={() => toggleTodo(t.id)} />
+                <span className="t" onClick={() => open(k)}>{t.text}</span>
+                {k < today && <button onClick={() => upd({ todos: s.todos.map((x) => (x.id === t.id ? { ...x, date: today } : x)) })}>→ Today</button>}
+              </div>
+            ))}
+          </div>
+        ))}
+      </>
+    );
+  }
+
+  function Habits() {
+    const d = parse(date);
+    const start = shift(date, -d.getDay());
+    const days = Array.from({ length: 7 }, (_, i) => shift(start, i));
+    return (
+      <>
+        <Nav label={`Habits · week of ${parse(start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`} onPrev={() => setDate(shift(date, -7))} onNext={() => setDate(shift(date, 7))} onToday={() => setDate(today)} />
+        <div className="jt-hb">
+          <div />
+          {days.map((k) => <div key={k} className={`hd ${k === today ? 'today' : ''}`}>{DOW[parse(k).getDay()][0]}<br />{parse(k).getDate()}</div>)}
+          <div />
+          {s.habits.map((h) => [
+            <div key={h.id} className="nm">{h.name}<br /><small>🔥 {streak(h.id)}</small></div>,
+            ...days.map((k) => <div key={h.id + k} className={`ck ${doneOn(k, h.id) ? 'on' : ''}`} onClick={() => toggleHabit(k, h.id)}>{doneOn(k, h.id) ? '✓' : ''}</div>),
+            <button key={h.id + 'x'} className="d" aria-label="Delete habit" onClick={() => removeHabit(h.id)}>✕</button>,
+          ])}
+        </div>
+        {s.habits.length === 0 && <p><small>Add your first habit below.</small></p>}
+        <div className="jt-row"><input placeholder="New habit" value={habitText} onChange={(e) => setHabitText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addHabit()} /><button className="p" onClick={addHabit}>Add</button></div>
       </>
     );
   }
@@ -188,11 +267,11 @@ export default function JibunTecho() {
     );
   }
 
-  const tabs = [['year', 'Year'], ['month', 'Month'], ['week', 'Week'], ['day', 'Day'], ['memo', 'Notes']];
+  const tabs = [['year', 'Year'], ['month', 'Month'], ['week', 'Week'], ['day', 'Day'], ['tasks', 'Tasks'], ['habits', 'Habits'], ['memo', 'Notes']];
   return (
     <div className="jt">
       <div className="jt-page" style={{ marginTop: 40 }}>
-        {editing ? EventForm() : view === 'year' ? Year() : view === 'month' ? Month() : view === 'week' ? Week() : view === 'day' ? Day() : Memo()}
+        {editing ? EventForm() : view === 'year' ? Year() : view === 'month' ? Month() : view === 'week' ? Week() : view === 'day' ? Day() : view === 'tasks' ? Tasks() : view === 'habits' ? Habits() : Memo()}
       </div>
       <nav className="jt-nav">
         {tabs.map(([v, l]) => <button key={v} className={view === v ? 'on' : ''} onClick={() => { setEditing(null); setView(v); }}>{l}</button>)}
