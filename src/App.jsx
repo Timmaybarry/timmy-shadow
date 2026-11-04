@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { MEALS, addFood, deleteFood, normalizeFood, sanitizeFoodLogs, totalsFor, updateFood } from './foodLog.js';
 
 const STORAGE_KEY = 'timmy-shadow-state';
 const HABIT_NAMES = ['sleep', 'hydration', 'movement', 'focus', 'mindfulness'];
@@ -89,6 +90,7 @@ function makeDefaultState(today) {
     },
     workoutPlans: {},
     workoutLogs: {},
+    foodLogs: {},
   };
 }
 
@@ -121,6 +123,7 @@ function loadState(today) {
       entries,
       workoutPlans: saved.workoutPlans || defaults.workoutPlans,
       workoutLogs: saved.workoutLogs || defaults.workoutLogs,
+      foodLogs: sanitizeFoodLogs(saved.foodLogs),
     };
   } catch {
     return defaults;
@@ -169,6 +172,12 @@ function createHabitId() {
   return `habit-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
+const EMPTY_FOOD = { name: '', meal: 'Breakfast', calories: '', protein: '', carbs: '', fat: '' };
+
+function createFoodId() {
+  return `food-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+}
+
 function App() {
   const today = dateKey();
   const [state, setState] = useState(() => loadState(today));
@@ -176,6 +185,9 @@ function App() {
   const [habitForm, setHabitForm] = useState({ name: '', icon: '✨' });
   const [habitError, setHabitError] = useState('');
   const [isEditingHabit, setIsEditingHabit] = useState(null);
+  const [foodForm, setFoodForm] = useState(EMPTY_FOOD);
+  const [foodError, setFoodError] = useState('');
+  const [editingFood, setEditingFood] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -203,6 +215,8 @@ function App() {
   const workout = workoutForDate(state.workoutPlans, selectedDate);
   const workoutLog = state.workoutLogs[selectedDate] || {};
   const completedExercises = workout.exercises.filter((exercise) => workoutLog[exercise.id]?.done).length;
+  const dayFoods = state.foodLogs[selectedDate] || [];
+  const dayTotals = totalsFor(dayFoods);
   const workoutHistory = Object.entries(state.workoutLogs).filter(([, log]) => Object.values(log || {}).some((item) => item?.done)).length;
 
   function updateEntry(field, value) {
@@ -256,6 +270,36 @@ function App() {
       setHabitForm({ name: '', icon: '✨' });
       setIsEditingHabit(null);
     }
+  }
+
+  function submitFood(event) {
+    event.preventDefault();
+    const { food, error } = normalizeFood(foodForm);
+    if (error) { setFoodError(error); return; }
+    setState((current) => ({ ...current, foodLogs: editingFood
+      ? updateFood(current.foodLogs, selectedDate, editingFood, food)
+      : addFood(current.foodLogs, selectedDate, food, createFoodId()),
+    }));
+    setFoodForm((current) => ({ ...EMPTY_FOOD, meal: current.meal }));
+    setEditingFood(null);
+    setFoodError('');
+  }
+
+  function editFood(food) {
+    setFoodForm({ name: food.name, meal: food.meal, calories: String(food.calories), protein: String(food.protein), carbs: String(food.carbs), fat: String(food.fat) });
+    setEditingFood(food.id);
+    setFoodError('');
+  }
+
+  function removeFood(id) {
+    setState((current) => ({ ...current, foodLogs: deleteFood(current.foodLogs, selectedDate, id) }));
+    if (editingFood === id) { setFoodForm(EMPTY_FOOD); setEditingFood(null); }
+  }
+
+  function cancelFoodEdit() {
+    setFoodForm(EMPTY_FOOD);
+    setEditingFood(null);
+    setFoodError('');
   }
 
   function updateNumber(field, value) {
@@ -434,6 +478,63 @@ function App() {
           <p style={{ color: '#6b7280', fontSize: '12px', margin: '12px 0 0' }}>Entries and habit history save automatically on this device.</p>
         </section>
 
+        <section id="food" style={cardStyle}>
+          <h2 style={{ margin: '0 0 5px', fontSize: '1.15rem' }}>Food log</h2>
+          <p style={{ color: '#9ca3af', fontSize: '14px', margin: '0 0 16px' }}>{formatDate(selectedDate)}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px', marginBottom: '16px' }}>
+            <Metric label="Calories" value={`${dayTotals.calories}`} />
+            <Metric label="Protein" value={`${dayTotals.protein}g`} />
+            <Metric label="Carbs" value={`${dayTotals.carbs}g`} />
+            <Metric label="Fat" value={`${dayTotals.fat}g`} />
+          </div>
+
+          {MEALS.map((meal) => {
+            const foods = dayFoods.filter((food) => food.meal === meal);
+            const totals = totalsFor(foods);
+            return (
+              <div key={meal} style={{ marginBottom: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', borderBottom: '1px solid #374151', paddingBottom: '6px' }}>
+                  <strong>{meal}</strong>
+                  <span style={{ color: '#a7f3d0', fontSize: '12px' }}>{totals.calories} kcal · P {totals.protein}g · C {totals.carbs}g · F {totals.fat}g</span>
+                </div>
+                {foods.length === 0 && <p style={{ color: '#6b7280', fontSize: '13px', margin: '8px 0 0' }}>Nothing logged.</p>}
+                {foods.map((food) => (
+                  <div key={food.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', padding: '10px 0', borderBottom: '1px solid #293548' }}>
+                    <div style={{ minWidth: 0, flex: '1 1 160px' }}>
+                      <div style={{ overflowWrap: 'anywhere' }}>{food.name}</div>
+                      <div style={{ color: '#9ca3af', fontSize: '12px' }}>{food.calories} kcal · P {food.protein}g · C {food.carbs}g · F {food.fat}g</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button type="button" onClick={() => editFood(food)} style={buttonStyle}>Edit</button>
+                      <button type="button" onClick={() => removeFood(food.id)} style={{ ...buttonStyle, color: '#fca5a5' }}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+
+          <form onSubmit={submitFood} style={{ display: 'grid', gap: '10px', marginTop: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
+              <input aria-label="Food name" value={foodForm.name} onChange={(event) => setFoodForm((current) => ({ ...current, name: event.target.value }))} placeholder="Food name" style={inputStyle} />
+              <select aria-label="Meal" value={foodForm.meal} onChange={(event) => setFoodForm((current) => ({ ...current, meal: event.target.value }))} style={inputStyle}>
+                {MEALS.map((meal) => <option key={meal} value={meal}>{meal}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '8px' }}>
+              {[['calories', 'Calories'], ['protein', 'Protein (g)'], ['carbs', 'Carbs (g)'], ['fat', 'Fat (g)']].map(([field, label]) => (
+                <input key={field} aria-label={label} type="number" inputMode="decimal" min="0" step="any" value={foodForm[field]} onChange={(event) => setFoodForm((current) => ({ ...current, [field]: event.target.value }))} placeholder={label} style={inputStyle} />
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button type="submit" style={{ ...buttonStyle, background: '#065f46', borderColor: '#047857' }}>{editingFood ? 'Save food' : 'Add food'}</button>
+              {editingFood && <button type="button" onClick={cancelFoodEdit} style={buttonStyle}>Cancel</button>}
+            </div>
+            {foodError && <p role="alert" style={{ color: '#fca5a5', fontSize: '13px', margin: 0 }}>{foodError}</p>}
+          </form>
+          <p style={{ color: '#6b7280', fontSize: '12px', margin: '12px 0 0' }}>Uses the date selected in the Journal section. Food logs save automatically on this device.</p>
+        </section>
+
         <section id="workouts" style={cardStyle}>
           <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>Workout plan</h2>
           <div style={{ display: 'grid', gap: '12px' }}>
@@ -495,11 +596,12 @@ function App() {
           </div>
         </section>
 
-        <nav aria-label="Main navigation" style={{ position: 'sticky', bottom: '12px', background: 'rgba(31,41,55,0.96)', border: '1px solid #374151', borderRadius: '16px', padding: '10px 6px', display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '4px', marginTop: '20px' }}>
+        <nav aria-label="Main navigation" style={{ position: 'sticky', bottom: '12px', background: 'rgba(31,41,55,0.96)', border: '1px solid #374151', borderRadius: '16px', padding: '10px 6px', display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '4px', marginTop: '20px' }}>
           <NavLink href="#home" icon="🏠" label="Home" />
           <NavLink href="#weekly" icon="📊" label="Week" />
           <NavLink href="#habits" icon="✅" label="Habits" />
           <NavLink href="#journal" icon="📓" label="Journal" />
+          <NavLink href="#food" icon="🍽️" label="Food" />
           <NavLink href="#workouts" icon="💪" label="Workout" />
         </nav>
       </main>
