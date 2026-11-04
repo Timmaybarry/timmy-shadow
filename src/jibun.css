@@ -37,3 +37,5 @@
 .jt-hb .ck.on{background:#5aa469;color:#fff;border-color:#5aa469}
 .jt-hb button{padding:4px}
 .jt-nav button{font-size:12px}
+.jt-entry{border-bottom:1px dashed var(--line);padding:8px 0;cursor:pointer;white-space:pre-wrap}
+.jt-nav button{padding:14px 0;font-size:11px}

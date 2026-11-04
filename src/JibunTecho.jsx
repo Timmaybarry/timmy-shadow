@@ -7,6 +7,12 @@ const MOODS = ['😄', '🙂', '😐', '😟', '😴'];
 const WEATHER = ['☀️', '⛅', '☁️', '🌧️', '❄️'];
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const PROMPTS = [
+  ['wins', 'Wins / highlights', 'What went well today?'],
+  ['grateful', 'Grateful for', 'Three things I appreciate…'],
+  ['lessons', 'Lessons / challenges', 'What was hard? What did I learn?'],
+  ['tomorrow', 'Tomorrow\'s focus', 'Top priorities for tomorrow…'],
+];
 const START_HOUR = 6, HOURS = 18, HOUR_PX = 32;
 
 const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -203,6 +209,17 @@ export default function JibunTecho() {
             <span className="t">{h.name}</span><small>🔥 {streak(h.id)}</small>
           </div>
         ))}
+        <h3>End-of-day journal</h3>
+        <div>Day rating {[1, 2, 3, 4, 5].map((n) => <button key={n} className={(info.rating || 0) >= n ? 'p' : ''} onClick={() => setInfo({ rating: info.rating === n ? 0 : n })}>★</button>)}</div>
+        {PROMPTS.map(([f, label, ph]) => (
+          <div key={f}>
+            <h3 style={{ color: 'inherit' }}>{label}</h3>
+            <textarea value={(info.journal || {})[f] || ''} placeholder={ph} onChange={(e) => setInfo({ journal: { ...(info.journal || {}), [f]: e.target.value } })} />
+          </div>
+        ))}
+        <p><small>
+          {todos.filter((t) => t.done).length}/{todos.length} tasks · {s.habits.filter((h) => doneOn(date, h.id)).length}/{s.habits.length} habits done today
+        </small></p>
         <h3>Diary / notes</h3>
         <textarea value={info.diary || ''} onChange={(e) => setInfo({ diary: e.target.value })} placeholder="How was today?" />
       </>
@@ -258,6 +275,27 @@ export default function JibunTecho() {
     );
   }
 
+  function Journal() {
+    const filled = Object.entries(s.days)
+      .filter(([, v]) => v.diary?.trim() || v.rating || Object.values(v.journal || {}).some((x) => x.trim()))
+      .sort(([a], [b]) => b.localeCompare(a));
+    return (
+      <>
+        <div className="jt-head"><h2>Journal</h2><small>{filled.length} entries</small></div>
+        <p><button className="p" onClick={() => open(today)}>Write today's entry</button></p>
+        {filled.length === 0 && <p><small>No entries yet.</small></p>}
+        {filled.map(([k, v]) => (
+          <div key={k} className="jt-entry" onClick={() => open(k)}>
+            <b>{parse(k).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</b>
+            {' '}{v.mood} {v.weather} {v.rating ? '★'.repeat(v.rating) : ''}
+            {PROMPTS.filter(([f]) => v.journal?.[f]?.trim()).map(([f, label]) => <div key={f}><small>{label}:</small> {v.journal[f]}</div>)}
+            {v.diary?.trim() && <div><small>Notes:</small> {v.diary}</div>}
+          </div>
+        ))}
+      </>
+    );
+  }
+
   function Memo() {
     return (
       <>
@@ -267,11 +305,11 @@ export default function JibunTecho() {
     );
   }
 
-  const tabs = [['year', 'Year'], ['month', 'Month'], ['week', 'Week'], ['day', 'Day'], ['tasks', 'Tasks'], ['habits', 'Habits'], ['memo', 'Notes']];
+  const tabs = [['year', 'Year'], ['month', 'Month'], ['week', 'Week'], ['day', 'Day'], ['tasks', 'Tasks'], ['habits', 'Habits'], ['journal', 'Journal'], ['memo', 'Notes']];
   return (
     <div className="jt">
       <div className="jt-page" style={{ marginTop: 40 }}>
-        {editing ? EventForm() : view === 'year' ? Year() : view === 'month' ? Month() : view === 'week' ? Week() : view === 'day' ? Day() : view === 'tasks' ? Tasks() : view === 'habits' ? Habits() : Memo()}
+        {editing ? EventForm() : view === 'year' ? Year() : view === 'month' ? Month() : view === 'week' ? Week() : view === 'day' ? Day() : view === 'tasks' ? Tasks() : view === 'habits' ? Habits() : view === 'journal' ? Journal() : Memo()}
       </div>
       <nav className="jt-nav">
         {tabs.map(([v, l]) => <button key={v} className={view === v ? 'on' : ''} onClick={() => { setEditing(null); setView(v); }}>{l}</button>)}
