@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import MealTracker from './MealTracker.jsx';
+import { DEFAULT_NUTRITION_GOALS, sanitizeGoals, sanitizeMeals } from './meals.js';
 
 const STORAGE_KEY = 'timmy-shadow-state';
 const HABIT_NAMES = ['sleep', 'hydration', 'movement', 'focus', 'mindfulness'];
@@ -89,6 +91,8 @@ function makeDefaultState(today) {
     },
     workoutPlans: {},
     workoutLogs: {},
+    meals: {},
+    nutritionGoals: { ...DEFAULT_NUTRITION_GOALS },
   };
 }
 
@@ -121,6 +125,8 @@ function loadState(today) {
       entries,
       workoutPlans: saved.workoutPlans || defaults.workoutPlans,
       workoutLogs: saved.workoutLogs || defaults.workoutLogs,
+      meals: sanitizeMeals(saved.meals),
+      nutritionGoals: sanitizeGoals(saved.nutritionGoals),
     };
   } catch {
     return defaults;
@@ -481,6 +487,24 @@ function App() {
           </div>
         </section>
 
+        <MealTracker
+          date={formatDate(selectedDate)}
+          items={state.meals[selectedDate] || []}
+          goals={state.nutritionGoals}
+          onAdd={(item) => setState((current) => ({
+            ...current,
+            meals: {
+              ...current.meals,
+              [selectedDate]: [...(current.meals[selectedDate] || []), { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, ...item }],
+            },
+          }))}
+          onDelete={(id) => setState((current) => ({
+            ...current,
+            meals: { ...current.meals, [selectedDate]: (current.meals[selectedDate] || []).filter((item) => item.id !== id) },
+          }))}
+          onGoalsChange={(nutritionGoals) => setState((current) => ({ ...current, nutritionGoals }))}
+        />
+
         <section id="goals" style={cardStyle}>
           <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>Weight & goals</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
@@ -495,12 +519,13 @@ function App() {
           </div>
         </section>
 
-        <nav aria-label="Main navigation" style={{ position: 'sticky', bottom: '12px', background: 'rgba(31,41,55,0.96)', border: '1px solid #374151', borderRadius: '16px', padding: '10px 6px', display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '4px', marginTop: '20px' }}>
+        <nav aria-label="Main navigation" style={{ position: 'sticky', bottom: '12px', background: 'rgba(31,41,55,0.96)', border: '1px solid #374151', borderRadius: '16px', padding: '10px 6px', display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '4px', marginTop: '20px' }}>
           <NavLink href="#home" icon="🏠" label="Home" />
           <NavLink href="#weekly" icon="📊" label="Week" />
           <NavLink href="#habits" icon="✅" label="Habits" />
           <NavLink href="#journal" icon="📓" label="Journal" />
           <NavLink href="#workouts" icon="💪" label="Workout" />
+          <NavLink href="#meals" icon="🍽️" label="Meals" />
         </nav>
       </main>
     </div>
