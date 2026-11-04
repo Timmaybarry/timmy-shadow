@@ -9,6 +9,10 @@ npm install
 npm run dev
 ```
 
+## Jibun Techo planner
+
+The app opens on a Jibun-techo-style planner (Year, Month, Week vertical timeline, Day with schedule/to-do/diary, free Notes). Use the top-left button to switch to the Shadow tracker. Data is stored in localStorage under `jibun-techo-state`.
+
 ## Features
 
 - Dark, responsive planner dashboard
