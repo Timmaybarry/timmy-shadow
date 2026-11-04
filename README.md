@@ -14,5 +14,6 @@ npm run dev
 - Dark, responsive planner dashboard
 - Date-specific journal, recovery notes, and daily intentions
 - Daily habit check-ins with current and longest streak tracking
+- Manual meal tracker with calories, protein, carbs, fat, daily totals, and daily goals (no external API)
 - Weight and goal progress
 - Automatic localStorage persistence (data stays in this browser/device)
