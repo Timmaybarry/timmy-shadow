@@ -16,3 +16,4 @@ npm run dev
 - Daily habit check-ins with current and longest streak tracking
 - Weight and goal progress
 - Automatic localStorage persistence (data stays in this browser/device)
+- Installable on your phone: open the deployed (HTTPS) URL, then Share → Add to Home Screen
