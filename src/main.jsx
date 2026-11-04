@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
+import JibunTecho from './JibunTecho.jsx';
 
 const STORAGE_KEY = 'timmy-shadow-state';
 const ONEDRIVE_FOLDER_URL = 'https://1drv.ms/f/c/a95c2dfbe131e8db/IgDd5OcW3dTCQZV8J0y-Q1ChAZUHhhLJSanpjO7vygD0_so?e=rBruTv';
@@ -93,10 +94,24 @@ const buttonStyle = {
   cursor: 'pointer',
 };
 
+function Root() {
+  const [mode, setMode] = useState(() => (localStorage.getItem('shadow-mode') === 'shadow' ? 'shadow' : 'techo'));
+  const toggle = () => {
+    const next = mode === 'techo' ? 'shadow' : 'techo';
+    localStorage.setItem('shadow-mode', next);
+    setMode(next);
+  };
+  return (
+    <>
+      <button type="button" className="jt-switch" onClick={toggle}>{mode === 'techo' ? '🌑 Shadow' : '📒 Techo'}</button>
+      {mode === 'techo' ? <JibunTecho /> : <><App /><OneDriveBackup /></>}
+    </>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
-    <OneDriveBackup />
+    <Root />
   </React.StrictMode>
 );
 
