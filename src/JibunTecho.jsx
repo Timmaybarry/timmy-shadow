@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import './jibun.css';
 
 const KEY = 'jibun-techo-state';
@@ -15,25 +15,23 @@ const shift = (k, n) => { const d = parse(k); d.setDate(d.getDate() + n); return
 const uid = () => Math.random().toString(36).slice(2, 10);
 const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 
-const empty = { events: [], todos: [], days: {}, monthGoals: {}, yearGoals: {}, memos: '' };
-function load() {
-  try { return { ...empty, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return empty; }
+export const emptyPlanner = { events: [], todos: [], days: {}, monthGoals: {}, yearGoals: {}, memos: '', life: {} };
+export function loadPlanner() {
+  try { return { ...emptyPlanner, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return emptyPlanner; }
 }
 
-export default function JibunTecho() {
+export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, openBrain }) {
   const today = key(new Date());
-  const [s, setS] = useState(load);
-  const [view, setView] = useState('month');
-  const [date, setDate] = useState(today);
+  const [view, setView] = useState('day');
   const [editing, setEditing] = useState(null);
   const [text, setText] = useState('');
 
-  useEffect(() => { localStorage.setItem(KEY, JSON.stringify(s)); }, [s]);
   const upd = (patch) => setS((p) => ({ ...p, ...patch }));
   const open = (k, v = 'day') => { setDate(k); setView(v); };
   const eventsOn = (k) => s.events.filter((e) => e.date === k).sort((a, b) => a.start.localeCompare(b.start));
   const saveEvent = (ev) => {
-    upd({ events: s.events.some((e) => e.id === ev.id) ? s.events.map((e) => (e.id === ev.id ? ev : e)) : [...s.events, ev] });
+    const { isNew, ...saved } = ev;
+    upd({ events: s.events.some((e) => e.id === ev.id) ? s.events.map((e) => (e.id === ev.id ? saved : e)) : [...s.events, saved] });
     setEditing(null);
   };
   const newEvent = (k) => setEditing({ id: uid(), date: k, start: '09:00', end: '10:00', title: '', color: COLORS[0], isNew: true });
@@ -44,13 +42,13 @@ export default function JibunTecho() {
   function EventForm() {
     const ev = editing;
     const set = (p) => setEditing({ ...ev, ...p });
-    const valid = ev.title.trim() && toMin(ev.end) > toMin(ev.start);
+    const valid = ev.title.trim() && (!ev.start && !ev.end || ev.start && (!ev.end || toMin(ev.end) > toMin(ev.start)));
     return (
       <div className="jt-form">
         <input className="w" placeholder="Event title" value={ev.title} onChange={(e) => set({ title: e.target.value })} autoFocus />
         <input type="date" className="w" value={ev.date} onChange={(e) => e.target.value && set({ date: e.target.value })} />
-        <input type="time" value={ev.start} onChange={(e) => set({ start: e.target.value })} />
-        <input type="time" value={ev.end} onChange={(e) => set({ end: e.target.value })} />
+        <label>Start (optional)<input type="time" value={ev.start} onChange={(e) => set({ start: e.target.value })} /></label>
+        <label>End (optional)<input type="time" value={ev.end} onChange={(e) => set({ end: e.target.value })} /></label>
         <div className="jt-sw w">{COLORS.map((c) => <span key={c} style={{ background: c }} className={ev.color === c ? 'on' : ''} onClick={() => set({ color: c })} />)}</div>
         <button className="p" disabled={!valid} onClick={() => saveEvent({ ...ev, title: ev.title.trim() })}>Save</button>
         <button onClick={() => setEditing(null)}>Cancel</button>
@@ -133,14 +131,15 @@ export default function JibunTecho() {
               const hh = String(Math.min(h, 23)).padStart(2, '0');
               setEditing({ ...{ id: uid(), date: k, title: '', color: COLORS[0], isNew: true }, start: `${hh}:00`, end: `${String(Math.min(h + 1, 23)).padStart(2, '0')}:${h >= 23 ? '59' : '00'}` });
             }}>
-              {eventsOn(k).map((e) => {
+              {eventsOn(k).filter((e) => e.start).map((e) => {
                 const top = Math.max(0, (toMin(e.start) - START_HOUR * 60) / 60 * HOUR_PX);
-                const h = Math.max(14, (toMin(e.end) - toMin(e.start)) / 60 * HOUR_PX);
+                const h = Math.max(14, (e.end ? toMin(e.end) - toMin(e.start) : 45) / 60 * HOUR_PX);
                 return <div key={e.id} className="jt-blk" style={{ top, height: h, background: e.color }} onClick={() => setEditing(e)}>{e.title}</div>;
               })}
             </div>
           ))}
         </div>
+        {days.map((k) => eventsOn(k).filter((e) => !e.start).map((e) => <div key={e.id} className="jt-row"><span>{k} · All day</span><button onClick={() => setEditing(e)}>{e.title}</button></div>))}
         <p><small>Tap an empty slot to add; tap a block to edit; tap a day header to open it.</small></p>
       </>
     );
@@ -160,7 +159,7 @@ export default function JibunTecho() {
         {eventsOn(date).map((e) => (
           <div key={e.id} className="jt-row" onClick={() => setEditing(e)}>
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: e.color }} />
-            <span>{e.start}–{e.end}</span><span className="t">{e.title}</span>
+            <span>{e.start ? `${e.start}${e.end ? `–${e.end}` : ''}` : 'All day'}</span><span className="t">{e.title}</span>
           </div>
         ))}
         <p><button onClick={() => newEvent(date)}>+ Add event</button></p>
@@ -173,26 +172,55 @@ export default function JibunTecho() {
           </div>
         ))}
         <div className="jt-row"><input placeholder="New to-do" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} /><button className="p" onClick={add}>Add</button></div>
+        <h3>Habits</h3>
+        {shadow.habitDefinitions.map((habit) => <label key={habit.id} className="jt-row">
+          <input type="checkbox" checked={Boolean(shadow.habitsByDate[date]?.[habit.id])} onChange={(e) => setShadow((current) => ({ ...current, habitsByDate: { ...current.habitsByDate, [date]: { ...current.habitsByDate[date], [habit.id]: e.target.checked } } }))} />
+          <span>{habit.icon} {habit.name}</span>
+        </label>)}
         <h3>Diary / notes</h3>
-        <textarea value={info.diary || ''} onChange={(e) => setInfo({ diary: e.target.value })} placeholder="How was today?" />
+        <textarea aria-label="Daily journal" value={shadow.entries[date]?.journal || ''} onChange={(e) => setShadow((current) => ({ ...current, entries: { ...current.entries, [date]: { ...current.entries[date], journal: e.target.value } } }))} placeholder="How was today?" />
+        {info.diary && <><h3>Earlier planner diary</h3><p>Your original planner diary is preserved here. Copy it into the shared journal if you wish.</p><textarea aria-label="Earlier planner diary" value={info.diary} onChange={(e) => setInfo({ diary: e.target.value })} /></>}
       </>
     );
+  }
+
+  function Life() {
+    const life = s.life || {};
+    const fields = [
+      ['values', 'Values & purpose', 'What matters most to you?'],
+      ['vision', 'Life vision', 'What kind of life are you working toward?'],
+      ['dreams', 'Dreams & things to do', 'Places, experiences, and dreams to pursue…'],
+      ['milestones', 'Life milestones', 'Important moments, dates, and achievements…'],
+      ['people', 'People & connections', 'People and relationships you want to nurture…'],
+    ];
+    return <>
+      <div className="jt-head"><h2>LIFE</h2></div>
+      <p>Keep the big picture here, then use your year and month goals to turn it into plans.</p>
+      {fields.map(([field, label, placeholder]) => <label key={field} className="jt-life-field">
+        <h3>{label}</h3>
+        <textarea value={life[field] || ''} placeholder={placeholder} onChange={(e) => upd({ life: { ...life, [field]: e.target.value } })} />
+      </label>)}
+      <button onClick={() => setView('year')}>Open year goals</button>
+    </>;
   }
 
   function Memo() {
     return (
       <>
-        <div className="jt-head"><h2>Free notes</h2></div>
+        <div className="jt-head"><h2>IDEA</h2></div>
+        <p>Use this space for freeform lists and ideas. Capture individual searchable notes in your Second Brain.</p>
+        <button onClick={openBrain}>Open Second Brain</button>
+        <h3>Free notes</h3>
         <textarea style={{ minHeight: 400 }} value={s.memos} onChange={(e) => upd({ memos: e.target.value })} placeholder="Lists, ideas, wishlist, books to read…" />
       </>
     );
   }
 
-  const tabs = [['year', 'Year'], ['month', 'Month'], ['week', 'Week'], ['day', 'Day'], ['memo', 'Notes']];
+  const tabs = [['life', 'LIFE'], ['year', 'Year'], ['month', 'Month'], ['week', 'Week'], ['day', 'Day'], ['memo', 'IDEA']];
   return (
     <div className="jt">
       <div className="jt-page" style={{ marginTop: 40 }}>
-        {editing ? EventForm() : view === 'year' ? Year() : view === 'month' ? Month() : view === 'week' ? Week() : view === 'day' ? Day() : Memo()}
+        {editing ? EventForm() : view === 'life' ? Life() : view === 'year' ? Year() : view === 'month' ? Month() : view === 'week' ? Week() : view === 'day' ? Day() : Memo()}
       </div>
       <nav className="jt-nav">
         {tabs.map(([v, l]) => <button key={v} className={view === v ? 'on' : ''} onClick={() => { setEditing(null); setView(v); }}>{l}</button>)}

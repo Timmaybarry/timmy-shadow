@@ -1,6 +1,6 @@
 {
-  "name": "Timmy'sShadow",
-  "short_name": "Shadow",
+  "name": "Timmy Life Journal",
+  "short_name": "Life Journal",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

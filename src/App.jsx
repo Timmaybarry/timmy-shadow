@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import MealTracker from './MealTracker.jsx';
 import { DEFAULT_NUTRITION_GOALS, sanitizeGoals, sanitizeMeals } from './meals.js';
 
@@ -33,7 +33,7 @@ const buttonStyle = {
   cursor: 'pointer',
 };
 
-function dateKey(date = new Date()) {
+export function dateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -96,7 +96,7 @@ function makeDefaultState(today) {
   };
 }
 
-function loadState(today) {
+export function loadState(today) {
   const defaults = makeDefaultState(today);
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
@@ -127,6 +127,7 @@ function loadState(today) {
       workoutLogs: saved.workoutLogs || defaults.workoutLogs,
       meals: sanitizeMeals(saved.meals),
       nutritionGoals: sanitizeGoals(saved.nutritionGoals),
+      timmyOsJournalImports: saved.timmyOsJournalImports || {},
     };
   } catch {
     return defaults;
@@ -175,17 +176,11 @@ function createHabitId() {
   return `habit-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
-function App() {
+function App({ state, setState, selectedDate, setSelectedDate }) {
   const today = dateKey();
-  const [state, setState] = useState(() => loadState(today));
-  const [selectedDate, setSelectedDate] = useState(today);
   const [habitForm, setHabitForm] = useState({ name: '', icon: '✨' });
   const [habitError, setHabitError] = useState('');
   const [isEditingHabit, setIsEditingHabit] = useState(null);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
 
   const entry = state.entries[selectedDate] || { journal: '', recovery: '', notes: '', mood: 'balanced', energy: '7' };
   const selectedHabits = state.habitsByDate[selectedDate] || {};
@@ -408,8 +403,8 @@ function App() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button type="button" aria-label="Previous day" onClick={() => setSelectedDate((day) => shiftDate(day, -1))} style={buttonStyle}>←</button>
-              <input aria-label="Select journal date" type="date" value={selectedDate} max={today} onChange={(event) => event.target.value && setSelectedDate(event.target.value)} style={{ ...inputStyle, width: 'auto', minWidth: '150px' }} />
-              <button type="button" aria-label="Next day" disabled={selectedDate >= today} onClick={() => setSelectedDate((day) => shiftDate(day, 1))} style={{ ...buttonStyle, opacity: selectedDate >= today ? 0.5 : 1 }}>→</button>
+              <input aria-label="Select journal date" type="date" value={selectedDate} onChange={(event) => event.target.value && setSelectedDate(event.target.value)} style={{ ...inputStyle, width: 'auto', minWidth: '150px' }} />
+              <button type="button" aria-label="Next day" onClick={() => setSelectedDate((day) => shiftDate(day, 1))} style={buttonStyle}>→</button>
             </div>
           </div>
 
@@ -431,11 +426,11 @@ function App() {
             </label>
           </div>
 
-          <TextArea label="Journal entry" value={entry.journal} onChange={(value) => updateEntry('journal', value)} placeholder="What stood out today?" />
-          <TextArea label="Recovery notes" value={entry.recovery} onChange={(value) => updateEntry('recovery', value)} placeholder="How is your body feeling?" />
+          <TextArea label="Journal entry" value={entry.journal || ''} onChange={(value) => updateEntry('journal', value)} placeholder="What stood out today?" />
+          <TextArea label="Recovery notes" value={entry.recovery || ''} onChange={(value) => updateEntry('recovery', value)} placeholder="How is your body feeling?" />
           <label style={{ display: 'block', marginTop: '14px' }}>
             <span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>Daily intention</span>
-            <input value={entry.notes} onChange={(event) => updateEntry('notes', event.target.value)} placeholder="A small thing to focus on" style={inputStyle} />
+            <input value={entry.notes || ''} onChange={(event) => updateEntry('notes', event.target.value)} placeholder="A small thing to focus on" style={inputStyle} />
           </label>
           <p style={{ color: '#6b7280', fontSize: '12px', margin: '12px 0 0' }}>Entries and habit history save automatically on this device.</p>
         </section>
