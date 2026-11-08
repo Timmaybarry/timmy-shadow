@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 const NOTES_KEY = 'timmy-shadow-notes';
+const CATEGORIES = ['Inbox', 'Projects', 'Areas', 'Resources', 'Archive'];
 const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/tasks',
   'https://www.googleapis.com/auth/calendar.events',
@@ -43,6 +44,8 @@ export default function NotesAndGoogle() {
   const [notes, setNotes] = useState(readNotes);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [category, setCategory] = useState('Inbox');
+  const [filter, setFilter] = useState('All');
   const [date, setDate] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -62,7 +65,7 @@ export default function NotesAndGoogle() {
     catch { setError('Could not save notes in this browser.'); }
   }, [notes]);
 
-  const filteredNotes = useMemo(() => notes.filter((note) => `${note.title} ${note.body}`.toLowerCase().includes(query.toLowerCase())), [notes, query]);
+  const filteredNotes = useMemo(() => notes.filter((note) => (filter === 'All' || (note.category || 'Inbox') === filter) && `${note.title} ${note.body}`.toLowerCase().includes(query.toLowerCase())), [notes, query, filter]);
 
   function saveNote(event) {
     event.preventDefault();
@@ -70,21 +73,21 @@ export default function NotesAndGoogle() {
     if (!cleanTitle && !body.trim()) { setError('Add a title or note text first.'); return; }
     const now = new Date().toISOString();
     if (editingId) {
-      setNotes((current) => current.map((item) => item.id === editingId ? { ...item, title: cleanTitle || 'Untitled note', body: body.trim(), date, updatedAt: now } : item));
+      setNotes((current) => current.map((item) => item.id === editingId ? { ...item, title: cleanTitle || 'Untitled note', body: body.trim(), category, date, updatedAt: now } : item));
     } else {
-      setNotes((current) => [{ id: globalThis.crypto?.randomUUID?.() || `note-${Date.now()}`, title: cleanTitle || 'Untitled note', body: body.trim(), date, createdAt: now, updatedAt: now }, ...current]);
+      setNotes((current) => [{ id: globalThis.crypto?.randomUUID?.() || `note-${Date.now()}`, title: cleanTitle || 'Untitled note', body: body.trim(), category, date, createdAt: now, updatedAt: now }, ...current]);
     }
-    setTitle(''); setBody(''); setEditingId(null); setError('');
+    setTitle(''); setBody(''); setCategory('Inbox'); setEditingId(null); setError('');
   }
   function editNote(note) {
-    setTitle(note.title); setBody(note.body); setDate(note.date || new Date().toISOString().slice(0, 10)); setEditingId(note.id); setError('');
+    setTitle(note.title); setBody(note.body); setCategory(note.category || 'Inbox'); setDate(note.date || new Date().toISOString().slice(0, 10)); setEditingId(note.id); setError('');
   }
   function deleteNote(id) {
     if (!window.confirm('Delete this note?')) return;
     setNotes((current) => current.filter((note) => note.id !== id));
     if (editingId === id) { setEditingId(null); setTitle(''); setBody(''); }
   }
-  function cancelEdit() { setEditingId(null); setTitle(''); setBody(''); setError(''); }
+  function cancelEdit() { setEditingId(null); setTitle(''); setBody(''); setCategory('Inbox'); setError(''); }
 
   async function connectGoogle(action = null) {
     if (!clientId.trim()) {
@@ -162,7 +165,7 @@ export default function NotesAndGoogle() {
   return (
     <section id="notes" style={{ ...cardStyle, color: '#f9fafb', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px', flexWrap: 'wrap' }}>
-        <div><p style={{ color: '#6ee7b7', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Capture and organize</p><h2 style={{ margin: 0, fontSize: '1.2rem' }}>Notes &amp; Google tools</h2><p style={{ color: '#9ca3af', fontSize: '13px', margin: '6px 0 0' }}>{notes.length} saved note{notes.length === 1 ? '' : 's'} · stored on this device</p></div>
+        <div><p style={{ color: '#6ee7b7', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Capture and organize</p><h2 style={{ margin: 0, fontSize: '1.2rem' }}>Second Brain</h2><p style={{ color: '#9ca3af', fontSize: '13px', margin: '6px 0 0' }}>Capture in Inbox, then organize into Projects, Areas, Resources, or Archive. {notes.length} saved note{notes.length === 1 ? '' : 's'} · stored on this device</p></div>
       </div>
 
       <div style={{ border: '1px solid #374151', background: '#111827', borderRadius: '12px', padding: '14px', marginTop: '16px' }}>
@@ -182,15 +185,18 @@ export default function NotesAndGoogle() {
       <form onSubmit={saveNote} style={{ display: 'grid', gap: '10px', marginTop: '18px' }}>
         <label style={{ color: '#d1d5db', fontSize: '13px' }}>Title<input aria-label="Note title" maxLength={100} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="What should you remember?" style={{ ...inputStyle, marginTop: '5px' }} /></label>
         <label style={{ color: '#d1d5db', fontSize: '13px' }}>Note<textarea aria-label="Note text" maxLength={5000} rows={4} value={body} onChange={(event) => setBody(event.target.value)} placeholder="Write your note, idea, or reminder…" style={{ ...inputStyle, marginTop: '5px', resize: 'vertical' }} /></label>
+        <label style={{ color: '#d1d5db', fontSize: '13px' }}>PARA category<select aria-label="PARA category" value={category} onChange={(event) => setCategory(event.target.value)} style={{ ...inputStyle, marginTop: '5px' }}>{CATEGORIES.map((item) => <option key={item}>{item}</option>)}</select></label>
         <label style={{ color: '#d1d5db', fontSize: '13px' }}>Reminder date<input aria-label="Note reminder date" type="date" value={date} onChange={(event) => setDate(event.target.value)} style={{ ...inputStyle, marginTop: '5px' }} /></label>
         <div style={{ display: 'flex', gap: '8px' }}><button type="submit" style={{ ...buttonStyle, background: '#065f46', borderColor: '#047857' }}>{editingId ? 'Save changes' : 'Save note'}</button>{editingId && <button type="button" onClick={cancelEdit} style={buttonStyle}>Cancel</button>}</div>
         {error && <p role="alert" style={{ color: '#fca5a5', fontSize: '13px', margin: 0 }}>{error}</p>}
       </form>
       <label style={{ display: 'block', marginTop: '18px', color: '#d1d5db', fontSize: '13px' }}>Search notes<input aria-label="Search notes" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search titles and note text" style={{ ...inputStyle, marginTop: '5px' }} /></label>
+      <label style={{ display: 'block', marginTop: '10px', color: '#d1d5db', fontSize: '13px' }}>Filter category<select aria-label="Filter category" value={filter} onChange={(event) => setFilter(event.target.value)} style={{ ...inputStyle, marginTop: '5px' }}>{['All', ...CATEGORIES].map((item) => <option key={item}>{item}</option>)}</select></label>
       <div style={{ marginTop: '12px' }}>
         {filteredNotes.length === 0 ? <p style={{ color: '#9ca3af', fontSize: '13px' }}>{notes.length ? 'No notes match your search.' : 'No notes yet. Add one above to get started.'}</p> : filteredNotes.map((note) => (
           <article key={note.id} style={{ background: '#111827', border: '1px solid #374151', borderRadius: '12px', padding: '14px', marginTop: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'start' }}><div style={{ minWidth: 0 }}><h3 style={{ margin: 0, fontSize: '15px', overflowWrap: 'anywhere' }}>{note.title}</h3><time dateTime={note.date} style={{ display: 'block', color: '#9ca3af', fontSize: '12px', marginTop: '4px' }}>{note.date ? new Date(`${note.date}T00:00:00`).toLocaleDateString() : 'No date'}</time></div><div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'end' }}><button type="button" onClick={() => editNote(note)} style={buttonStyle}>Edit</button><button type="button" onClick={() => deleteNote(note.id)} style={{ ...buttonStyle, color: '#fca5a5' }}>Delete</button></div></div>
+            <p style={{ color: '#a7f3d0', fontSize: '12px' }}>{note.category || 'Inbox'}</p>
             {note.body && <p style={{ whiteSpace: 'pre-wrap', color: '#d1d5db', fontSize: '13px', lineHeight: 1.5, margin: '10px 0' }}>{note.body}</p>}
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
               <button type="button" disabled={googleBusy === `task-${note.id}`} onClick={() => sendToGoogle(note, 'task')} style={{ ...buttonStyle, opacity: googleBusy === `task-${note.id}` ? 0.6 : 1 }}>{googleBusy === `task-${note.id}` ? 'Adding…' : 'Add to Google Tasks'}</button>
