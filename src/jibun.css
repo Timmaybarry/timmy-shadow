@@ -29,3 +29,7 @@
 .jt-mo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.jt-mo button{padding:14px 4px}
 .jt-sw{display:flex;gap:6px}.jt-sw span{width:26px;height:26px;border-radius:50%;cursor:pointer;border:3px solid transparent}.jt-sw .on{border-color:#333}
 .jt-switch{position:fixed;left:10px;top:10px;z-index:1001;border:1px solid #047857;border-radius:999px;padding:9px 13px;background:#064e3b;color:#f9fafb;font-size:13px;font-weight:700;cursor:pointer}
+.jt-actions{display:flex;gap:8px;align-items:center;margin:8px 0}.jt-actions input{flex:1;min-width:0}.jt-actions button{white-space:nowrap}
+.jt label{display:block}.jt label textarea,.jt label select{margin:5px 0 10px}.jt-task{padding:3px 8px;margin:6px 0;border-radius:8px}.jt-aligned{background:#fff0c7;border-left:4px solid #b66b00}.jt-aligned strong{color:#754100}
+.jt-link{font-size:12px;color:#625b4f}.jt .jt-link select{font-size:14px;padding:5px;margin:4px 0}
+.jt-google{border:1px solid var(--line);border-radius:10px;padding:12px;margin:12px 0}.jt-google p,.jt-google small{font-size:13px}.jt-google h4{margin:16px 0 4px}.jt-task-form{display:grid;gap:6px;margin-top:12px}.jt-task-form button{justify-self:start}
