@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { loadGoogleIdentity } from './googleIdentity.js';
 
 const NOTES_KEY = 'timmy-shadow-notes';
 const CATEGORIES = ['Inbox', 'Projects', 'Areas', 'Resources', 'Archive'];
@@ -15,23 +16,6 @@ function readNotes() {
     const value = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]');
     return Array.isArray(value) ? value.filter((note) => note && typeof note.id === 'string') : [];
   } catch { return []; }
-}
-function loadGoogleIdentity() {
-  if (window.google?.accounts?.oauth2) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    let script = document.querySelector('script[data-google-identity]');
-    if (!script) {
-      script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.dataset.googleIdentity = 'true';
-      document.head.appendChild(script);
-    }
-    script.addEventListener('load', resolve, { once: true });
-    script.addEventListener('error', () => reject(new Error('Could not load Google sign-in. Check your connection and try again.')), { once: true });
-    if (window.google?.accounts?.oauth2) resolve();
-  });
 }
 function calendarDates(date) {
   const endDate = new Date(`${date}T00:00:00`);
