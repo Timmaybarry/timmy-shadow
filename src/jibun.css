@@ -1,6 +1,6 @@
-.jt{--paper:#fffdf7;--ink:#3b3a36;--line:#e4dfd0;--accent:#e56b6f;--soft:#f6efe0;min-height:100vh;background:var(--soft);color:var(--ink);font-family:system-ui,sans-serif;padding:12px 10px 90px;box-sizing:border-box}
+.jt{--paper:#fffdf7;--ink:#3b3a36;--line:#e4dfd0;--accent:#d46b58;--soft:#f6efe0;min-height:100vh;background:var(--soft);color:var(--ink);font-family:system-ui,sans-serif;padding:20px 20px 100px;box-sizing:border-box}
 .jt *{box-sizing:border-box}
-.jt-page{max-width:760px;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:0 4px 18px rgba(0,0,0,.08)}
+.jt-page{max-width:1120px;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:28px;box-shadow:0 12px 36px rgba(69,54,30,.08)}
 .jt h2{margin:0;font-size:18px}.jt h3{margin:14px 0 6px;font-size:14px;color:var(--accent)}
 .jt-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
 .jt button{font:inherit;font-size:14px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer}
@@ -8,9 +8,9 @@
 .jt button.d{color:#b42318}
 .jt input,.jt textarea,.jt select{font:inherit;font-size:16px;width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
 .jt textarea{min-height:90px;resize:vertical;background-image:repeating-linear-gradient(transparent,transparent 27px,var(--line) 28px);line-height:28px;padding:0 9px}
-.jt-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--line);z-index:50}
+.jt-nav{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;width:min(640px,calc(100% - 32px));background:rgba(255,253,247,.96);border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 30px rgba(69,54,30,.16);z-index:50;overflow:hidden}
 .jt-nav button{flex:1;border:0;border-radius:0;padding:14px 2px;font-size:13px;background:#fff}
-.jt-nav button.on{color:var(--accent);font-weight:700;box-shadow:inset 0 3px var(--accent)}
+.jt-nav button.on{color:var(--accent);font-weight:700;box-shadow:inset 0 3px var(--accent);background:#fffaf1}
 .jt-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
 .jt-grid>div{background:var(--paper);min-height:64px;padding:3px;font-size:11px;overflow:hidden;cursor:pointer}
 .jt-grid .dow{min-height:0;text-align:center;font-weight:700;cursor:default;background:var(--soft)}
@@ -33,3 +33,45 @@
 .jt label{display:block}.jt label textarea,.jt label select{margin:5px 0 10px}.jt-task{padding:3px 8px;margin:6px 0;border-radius:8px}.jt-aligned{background:#fff0c7;border-left:4px solid #b66b00}.jt-aligned strong{color:#754100}
 .jt-link{font-size:12px;color:#625b4f}.jt .jt-link select{font-size:14px;padding:5px;margin:4px 0}
 .jt-google{border:1px solid var(--line);border-radius:10px;padding:12px;margin:12px 0}.jt-google p,.jt-google small{font-size:13px}.jt-google h4{margin:16px 0 4px}.jt-task-form{display:grid;gap:6px;margin-top:12px}.jt-task-form button{justify-self:start}
+.jt-day-hero{padding:10px 4px 24px}
+.jt-day-hero .jt-head{margin:0;gap:12px}
+.jt-day-hero .jt-head h2{font-size:clamp(26px,4vw,36px);letter-spacing:-.04em}
+.jt-day-hero .jt-head button{width:42px;height:42px;font-size:22px;border-radius:50%;background:var(--paper)}
+.jt-eyebrow{margin:0 0 4px;color:var(--accent);font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.jt-day-subtitle{margin:8px 0 0;color:#7e786e;font-size:14px}
+.jt-day-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.jt-day-grid>.jt-card{min-width:0;background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 4px 14px rgba(69,54,30,.04)}
+.jt-day-grid>.jt-focus-card,.jt-day-grid>.jt-reflection-card{grid-column:1/-1}
+.jt-section-heading{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+.jt-section-heading h3{margin:0 0 4px;font-size:17px;color:var(--ink);letter-spacing:-.02em}
+.jt-section-heading p{margin:0;color:#817a70;font-size:13px;line-height:1.5}
+.jt-step{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:10px;background:#fbede7;color:var(--accent);font-size:11px;font-weight:800}
+.jt-day-grid .jt-actions{margin:0 0 14px}
+.jt-day-grid .jt-actions button,.jt-day-grid button.p{background:var(--accent);border-color:var(--accent);color:white}
+.jt-day-grid .jt-actions button:disabled{opacity:.5;cursor:not-allowed}
+.jt-day-grid label{font-size:13px}
+.jt-day-grid label select{margin:6px 0 0}
+.jt-checkin{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.jt-checkin>div{display:flex;align-items:center;gap:5px}
+.jt-checkin>div>span{margin-right:4px;color:#817a70;font-size:12px}
+.jt-checkin button{padding:6px 8px}
+.jt-day-grid .jt-row{gap:10px;padding:10px 0}
+.jt-day-grid .jt-task{padding:6px 10px;margin:6px 0}
+.jt-day-grid .jt-task .jt-row{padding:5px 0}
+.jt-day-grid .jt-task input[type=checkbox]{accent-color:var(--accent)}
+.jt-day-grid .jt-task .jt-link{margin-top:4px}
+.jt-day-grid .jt-muted{margin:12px 0 0;color:#817a70;font-size:12px}
+.jt-reflection-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.jt-reflection-grid label{font-weight:600}
+.jt-reflection-grid textarea{margin-top:7px;min-height:110px;font-weight:400}
+.jt-day-grid .jt-google{background:#fffdf9}
+@media(max-width:700px){
+  .jt{padding:12px 10px 94px}
+  .jt-page{padding:16px;border-radius:16px}
+  .jt-day-grid{grid-template-columns:1fr;gap:12px}
+  .jt-day-grid>.jt-focus-card,.jt-day-grid>.jt-reflection-card{grid-column:auto}
+  .jt-day-grid>.jt-card{padding:16px}
+  .jt-reflection-grid{grid-template-columns:1fr}
+  .jt-nav{bottom:8px;width:calc(100% - 16px);border-radius:12px}
+  .jt-nav button{font-size:11px;padding:13px 1px}
+}

@@ -178,59 +178,77 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
     const entry = shadow.entries[date] || {};
     const setEntry = (field, value) => setShadow((current) => ({ ...current, entries: { ...current.entries, [date]: { ...current.entries[date], [field]: value } } }));
     return (
-      <>
+      <div className="jt-day">
+        <header className="jt-day-hero">
+          <p className="jt-eyebrow">Your daily planner</p>
         <Nav label={parse(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} onPrev={() => setDate(shift(date, -1))} onNext={() => setDate(shift(date, 1))} onToday={() => setDate(today)} />
-        <h3>1. Choose today’s focus</h3>
-        <p>Add your goals, choose one for this day, and link tasks and habits below. Matching items are highlighted.</p>
-        <div className="jt-actions"><input aria-label="New goal" placeholder="A goal that matters to you" value={goalText} onChange={(event) => setGoalText(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && addGoal()} /><button onClick={addGoal} disabled={!goalText.trim()}>Add goal</button></div>
-        <label>Focus goal for this date<select value={focusGoal} onChange={(event) => setInfo({ focusGoal: event.target.value })}><option value="">Choose a focus goal</option>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</select></label>
-        {goals.length > 0 && <details><summary>Manage goals</summary>{goals.map((goal) => <div className="jt-row" key={goal.id}><span className="t">{goal.name}</span><button className="d" onClick={() => removeGoal(goal)}>Remove</button></div>)}</details>}
-        <div>Weather {WEATHER.map((w) => <button key={w} className={info.weather === w ? 'p' : ''} onClick={() => setInfo({ weather: info.weather === w ? '' : w })}>{w}</button>)}</div>
-        <div style={{ marginTop: 6 }}>Mood {MOODS.map((m) => <button key={m} className={info.mood === m ? 'p' : ''} onClick={() => setInfo({ mood: info.mood === m ? '' : m })}>{m}</button>)}</div>
-        <h3>2. Review your schedule</h3>
-        {eventsOn(date).map((e) => (
-          <div key={e.id} className="jt-row" onClick={() => setEditing(e)}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: e.color }} />
-            <span>{e.start ? `${e.start}${e.end ? `–${e.end}` : ''}` : 'All day'}</span><span className="t">{e.title}</span>
-          </div>
-        ))}
-        <p><button onClick={() => newEvent(date)}>+ Add event</button></p>
-        <GoogleDay date={date} goals={goals} focusGoal={focusGoal} links={links} setLink={setLink} />
-        <h3>3. Plan your tasks</h3>
-        <p>Local tasks due by this date are shown until completed. Google tasks are managed above.</p>
-        {todos.map((t) => {
-          const item = `local:${t.id}`;
-          const aligned = focusGoal && links[item] === focusGoal;
-          return <div key={t.id} className={`jt-task ${aligned ? 'jt-aligned' : ''}`}>
-            <div className="jt-row">
-              <input aria-label={`Complete ${t.text}`} type="checkbox" checked={t.done} onChange={() => upd({ todos: s.todos.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)) })} />
-              <span className={`t ${t.done ? 'done' : ''}`}>{t.text} {aligned && <strong>· Today’s focus</strong>}{t.date !== date && <><br /><small>{t.date ? `Due ${t.date}` : 'No due date'}</small></>}</span>
-              <button className="d" aria-label={`Delete ${t.text}`} onClick={() => upd({ todos: s.todos.filter((x) => x.id !== t.id) })}>✕</button>
+          <p className="jt-day-subtitle">A little structure for the things that matter.</p>
+        </header>
+        <div className="jt-day-grid">
+          <section className="jt-card jt-focus-card">
+            <div className="jt-section-heading"><span className="jt-step">01</span><div><h3>Choose your focus</h3><p>Add a goal and choose what deserves your attention today.</p></div></div>
+            <div className="jt-actions"><input aria-label="New goal" placeholder="A goal that matters to you" value={goalText} onChange={(event) => setGoalText(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && addGoal()} /><button onClick={addGoal} disabled={!goalText.trim()}>Add goal</button></div>
+            <label>Focus goal for this date<select value={focusGoal} onChange={(event) => setInfo({ focusGoal: event.target.value })}><option value="">Choose a focus goal</option>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</select></label>
+            {goals.length > 0 && <details><summary>Manage goals</summary>{goals.map((goal) => <div className="jt-row" key={goal.id}><span className="t">{goal.name}</span><button className="d" onClick={() => removeGoal(goal)}>Remove</button></div>)}</details>}
+            <div className="jt-checkin">
+              <div><span>Weather</span>{WEATHER.map((w) => <button key={w} aria-label={`Weather ${w}`} className={info.weather === w ? 'p' : ''} onClick={() => setInfo({ weather: info.weather === w ? '' : w })}>{w}</button>)}</div>
+              <div><span>Mood</span>{MOODS.map((m) => <button key={m} aria-label={`Mood ${m}`} className={info.mood === m ? 'p' : ''} onClick={() => setInfo({ mood: info.mood === m ? '' : m })}>{m}</button>)}</div>
             </div>
-            {goalSelector(item, t.text)}
-          </div>;
-        })}
-        <div className="jt-row"><input aria-label="New local task" placeholder="New local task" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} /><button className="p" onClick={add}>Add local task</button></div>
-        <h3>4. Practice your habits</h3>
-        {shadow.habitDefinitions.map((habit) => {
-          const item = `habit:${habit.id}`;
-          const aligned = focusGoal && links[item] === focusGoal;
-          return <div key={habit.id} className={`jt-task ${aligned ? 'jt-aligned' : ''}`}>
-            <label className="jt-row">
-              <input type="checkbox" checked={Boolean(shadow.habitsByDate[date]?.[habit.id])} onChange={(e) => setShadow((current) => ({ ...current, habitsByDate: { ...current.habitsByDate, [date]: { ...current.habitsByDate[date], [habit.id]: e.target.checked } } }))} />
-              <span>{habit.icon} {habit.name} {aligned && <strong>· Today’s focus</strong>}</span>
-            </label>
-            {goalSelector(item, habit.name)}
-          </div>;
-        })}
-        <p>Add or edit habits in Daily &amp; health.</p>
-        <h3>5. Reflect</h3>
-        <label>Silent Strength reading<textarea value={entry.silentStrength || ''} onChange={(e) => setEntry('silentStrength', e.target.value)} placeholder="What stood out and how can you apply it today?" /></label>
-        <label>Daily Stoic reading<textarea value={entry.dailyStoic || ''} onChange={(e) => setEntry('dailyStoic', e.target.value)} placeholder="What did you learn and what will you practice?" /></label>
-        <label>Daily notes<textarea value={entry.notes || ''} onChange={(e) => setEntry('notes', e.target.value)} placeholder="Notes for this day" /></label>
-        <label>Daily journal<textarea aria-label="Daily journal" value={entry.journal || ''} onChange={(e) => setEntry('journal', e.target.value)} placeholder="How was today?" /></label>
-        {info.diary && <><h3>Earlier planner diary</h3><p>Your original planner diary is preserved here. Copy it into the shared journal if you wish.</p><textarea aria-label="Earlier planner diary" value={info.diary} onChange={(e) => setInfo({ diary: e.target.value })} /></>}
-      </>
+          </section>
+          <section className="jt-card">
+            <div className="jt-section-heading"><span className="jt-step">02</span><div><h3>Review your schedule</h3><p>Your plans for the day, all in one place.</p></div></div>
+            {eventsOn(date).map((e) => (
+              <div key={e.id} className="jt-row" onClick={() => setEditing(e)}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: e.color }} />
+                <span>{e.start ? `${e.start}${e.end ? `–${e.end}` : ''}` : 'All day'}</span><span className="t">{e.title}</span>
+              </div>
+            ))}
+            <p><button onClick={() => newEvent(date)}>+ Add event</button></p>
+            <GoogleDay date={date} goals={goals} focusGoal={focusGoal} links={links} setLink={setLink} />
+          </section>
+          <section className="jt-card">
+            <div className="jt-section-heading"><span className="jt-step">03</span><div><h3>Plan your tasks</h3><p>Local tasks due by this date stay here until complete. Google tasks are managed above.</p></div></div>
+            {todos.map((t) => {
+              const item = `local:${t.id}`;
+              const aligned = focusGoal && links[item] === focusGoal;
+              return <div key={t.id} className={`jt-task ${aligned ? 'jt-aligned' : ''}`}>
+                <div className="jt-row">
+                  <input aria-label={`Complete ${t.text}`} type="checkbox" checked={t.done} onChange={() => upd({ todos: s.todos.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)) })} />
+                  <span className={`t ${t.done ? 'done' : ''}`}>{t.text} {aligned && <strong>· Today’s focus</strong>}{t.date !== date && <><br /><small>{t.date ? `Due ${t.date}` : 'No due date'}</small></>}</span>
+                  <button className="d" aria-label={`Delete ${t.text}`} onClick={() => upd({ todos: s.todos.filter((x) => x.id !== t.id) })}>✕</button>
+                </div>
+                {goalSelector(item, t.text)}
+              </div>;
+            })}
+            <div className="jt-row"><input aria-label="New local task" placeholder="New local task" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} /><button className="p" onClick={add}>Add local task</button></div>
+          </section>
+          <section className="jt-card">
+            <div className="jt-section-heading"><span className="jt-step">04</span><div><h3>Practice your habits</h3><p>Small steps add up. Link a habit to your focus goal if you like.</p></div></div>
+            {shadow.habitDefinitions.map((habit) => {
+              const item = `habit:${habit.id}`;
+              const aligned = focusGoal && links[item] === focusGoal;
+              return <div key={habit.id} className={`jt-task ${aligned ? 'jt-aligned' : ''}`}>
+                <label className="jt-row">
+                  <input type="checkbox" checked={Boolean(shadow.habitsByDate[date]?.[habit.id])} onChange={(e) => setShadow((current) => ({ ...current, habitsByDate: { ...current.habitsByDate, [date]: { ...current.habitsByDate[date], [habit.id]: e.target.checked } } }))} />
+                  <span>{habit.icon} {habit.name} {aligned && <strong>· Today’s focus</strong>}</span>
+                </label>
+                {goalSelector(item, habit.name)}
+              </div>;
+            })}
+            <p className="jt-muted">Add or edit habits in Daily &amp; health.</p>
+          </section>
+          <section className="jt-card jt-reflection-card">
+            <div className="jt-section-heading"><span className="jt-step">05</span><div><h3>Take a moment to reflect</h3><p>Capture what you learned, what you noticed, and how you want to move forward.</p></div></div>
+            <div className="jt-reflection-grid">
+              <label>Silent Strength reading<textarea value={entry.silentStrength || ''} onChange={(e) => setEntry('silentStrength', e.target.value)} placeholder="What stood out and how can you apply it today?" /></label>
+              <label>Daily Stoic reading<textarea value={entry.dailyStoic || ''} onChange={(e) => setEntry('dailyStoic', e.target.value)} placeholder="What did you learn and what will you practice?" /></label>
+              <label>Daily notes<textarea value={entry.notes || ''} onChange={(e) => setEntry('notes', e.target.value)} placeholder="Notes for this day" /></label>
+              <label>Daily journal<textarea aria-label="Daily journal" value={entry.journal || ''} onChange={(e) => setEntry('journal', e.target.value)} placeholder="How was today?" /></label>
+            </div>
+            {info.diary && <><h3>Earlier planner diary</h3><p>Your original planner diary is preserved here. Copy it into the shared journal if you wish.</p><textarea aria-label="Earlier planner diary" value={info.diary} onChange={(e) => setInfo({ diary: e.target.value })} /></>}
+          </section>
+        </div>
+      </div>
     );
   }
 
