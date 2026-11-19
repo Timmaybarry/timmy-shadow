@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import GoogleDay, { GoogleSchedule, GoogleTasks } from './GoogleDay.jsx';
+import GoogleDay, { GoogleSchedule } from './GoogleDay.jsx';
 import './jibun.css';
 
 const KEY = 'jibun-techo-state';
@@ -25,7 +25,6 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
   const today = key(new Date());
   const [view, setView] = useState('day');
   const [editing, setEditing] = useState(null);
-  const [text, setText] = useState('');
   const [goalText, setGoalText] = useState('');
   const [priorityText, setPriorityText] = useState({ personal: '', work: '' });
 
@@ -161,7 +160,6 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
       </select>
     </label>;
     const todos = s.todos.filter((t) => t.done ? t.date === date : !t.date || t.date <= date);
-    const add = () => { if (!text.trim()) return; upd({ todos: [...s.todos, { id: uid(), date, text: text.trim(), done: false }] }); setText(''); };
     const priorities = info.priorities || {};
     const priorityIds = (group) => (priorities[group] || []).filter((id) => s.todos.some((task) => task.id === id));
     const selectedIds = [...priorityIds('personal'), ...priorityIds('work')];
@@ -212,7 +210,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
         <Nav label={parse(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} onPrev={() => setDate(shift(date, -1))} onNext={() => setDate(shift(date, 1))} onToday={() => setDate(today)} />
           <p className="jt-day-subtitle">A little structure for the things that matter.</p>
         </header>
-        <GoogleDay date={date}>
+        <GoogleDay date={date} initialClientId="285115057031-p6q8oaca3f1f0lkg5lf34j0q48gn2u9l.apps.googleusercontent.com">
         <div className="jt-day-grid">
           <section className="jt-card jt-priorities-card">
             <div className="jt-section-heading"><span className="jt-step">01</span><div><h3>Today’s top tasks</h3><p>Choose up to five local tasks for each area, in priority order. Remove a task from a list to make room.</p></div></div>
@@ -245,7 +243,6 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
                 </div>;
               })}
             </div>
-            <p className="jt-muted">Google Tasks remain available under Plan your tasks.</p>
           </section>
           <section className="jt-card jt-log-card">
             <div className="jt-section-heading"><span className="jt-step">02</span><div><h3>Focus &amp; running log</h3><p>Keep the task at hand visible and capture actions as your day unfolds.</p></div></div>
@@ -275,24 +272,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
             <GoogleSchedule />
           </section>
           <section className="jt-card">
-            <div className="jt-section-heading"><span className="jt-step">05</span><div><h3>Plan your tasks</h3><p>Local and Google tasks due by this date stay here until complete.</p></div></div>
-            {todos.map((t) => {
-              const item = `local:${t.id}`;
-              const aligned = focusGoal && links[item] === focusGoal;
-              return <div key={t.id} className={`jt-task ${aligned ? 'jt-aligned' : ''}`}>
-                <div className="jt-row">
-                  <input aria-label={`Complete ${t.text}`} type="checkbox" checked={t.done} onChange={() => upd({ todos: s.todos.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)) })} />
-                  <span className={`t ${t.done ? 'done' : ''}`}>{t.text} {aligned && <strong>· Today’s focus</strong>}{t.date !== date && <><br /><small>{t.date ? `Due ${t.date}` : 'No due date'}</small></>}</span>
-                  <button className="d" aria-label={`Delete ${t.text}`} onClick={() => upd({ todos: s.todos.filter((x) => x.id !== t.id) })}>✕</button>
-                </div>
-                {goalSelector(item, t.text)}
-              </div>;
-            })}
-            <div className="jt-row"><input aria-label="New local task" placeholder="New local task" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} /><button className="p" onClick={add}>Add local task</button></div>
-            <GoogleTasks goals={goals} focusGoal={focusGoal} links={links} setLink={setLink} />
-          </section>
-          <section className="jt-card">
-            <div className="jt-section-heading"><span className="jt-step">06</span><div><h3>Schedule your habits</h3><p>Set a time for this day and check off habits as you complete them.</p></div></div>
+            <div className="jt-section-heading"><span className="jt-step">05</span><div><h3>Schedule your habits</h3><p>Set a time for this day and check off habits as you complete them.</p></div></div>
             {shadow.habitDefinitions.map((habit) => {
               const item = `habit:${habit.id}`;
               const aligned = focusGoal && links[item] === focusGoal;
@@ -308,7 +288,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
             <p className="jt-muted">Add or edit habits in Daily &amp; health.</p>
           </section>
           <section className="jt-card jt-reflection-card">
-            <div className="jt-section-heading"><span className="jt-step">07</span><div><h3>Take a moment to reflect</h3><p>Capture what you learned, what you noticed, and how you want to move forward.</p></div></div>
+            <div className="jt-section-heading"><span className="jt-step">06</span><div><h3>Take a moment to reflect</h3><p>Capture what you learned, what you noticed, and how you want to move forward.</p></div></div>
             <div className="jt-reflection-grid">
               <label>Silent Strength reading<textarea value={entry.silentStrength || ''} onChange={(e) => setEntry('silentStrength', e.target.value)} placeholder="What stood out and how can you apply it today?" /></label>
               <label>Daily Stoic reading<textarea value={entry.dailyStoic || ''} onChange={(e) => setEntry('dailyStoic', e.target.value)} placeholder="What did you learn and what will you practice?" /></label>
