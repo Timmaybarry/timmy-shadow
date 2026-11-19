@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGoogleTask, dayBounds, fetchGoogleDay, googleTaskKey, setGoogleTaskDone, taskVisibleOn } from '../src/googlePlanner.js';
+import { createGoogleTask, dayBounds, fetchGoogleCalendarDay, fetchGoogleDay, googleTaskKey, setGoogleTaskDone, taskVisibleOn } from '../src/googlePlanner.js';
 
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; });
@@ -72,4 +72,20 @@ test('creates and reopens Google tasks with the expected date and payload', asyn
 test('reports Google API errors rather than presenting incomplete results', async () => {
   globalThis.fetch = async () => new Response(JSON.stringify({ error: { message: 'Permission denied' } }), { status: 403 });
   await assert.rejects(fetchGoogleDay('token', '2026-11-14'), /403.*Permission denied/);
+});
+
+test('calendar-only schedule does not request Google Tasks', async () => {
+  const calls = [];
+  globalThis.fetch = async (input) => {
+    const url = new URL(input);
+    calls.push(url.href);
+    const items = url.pathname.endsWith('/calendarList')
+      ? [{ id: 'personal', summary: 'Personal' }]
+      : [{ id: 'event', summary: 'Meeting', start: { date: '2026-11-14' } }];
+    return new Response(JSON.stringify({ items }), { status: 200 });
+  };
+  const result = await fetchGoogleCalendarDay('token', '2026-11-14');
+  assert.equal(result.events[0].summary, 'Meeting');
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every((url) => !url.includes('tasks.googleapis.com')));
 });

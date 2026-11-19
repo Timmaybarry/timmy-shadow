@@ -46,26 +46,31 @@ export function googleTaskKey(listId, taskId) {
   return `google:${JSON.stringify([listId, taskId])}`;
 }
 
-export async function fetchGoogleDay(token, date) {
+export async function fetchGoogleCalendarDay(token, date) {
   const bounds = dayBounds(date);
   const calendars = await pages(token, `${CALENDAR}/users/me/calendarList?minAccessRole=reader`);
-  const taskLists = await pages(token, `${TASKS}/users/@me/lists?maxResults=100`);
-  const [eventGroups, taskGroups] = await Promise.all([
-    Promise.all(calendars.filter((calendar) => calendar.selected !== false).map(async (calendar) => {
+  const eventGroups = await Promise.all(calendars.filter((calendar) => calendar.selected !== false).map(async (calendar) => {
       const url = new URL(`${CALENDAR}/calendars/${encodeURIComponent(calendar.id)}/events`);
       url.search = new URLSearchParams({ singleEvents: 'true', orderBy: 'startTime', timeMin: bounds.start, timeMax: bounds.end, maxResults: '250' });
       return (await pages(token, url)).filter((event) => event.status !== 'cancelled').map((event) => ({ ...event, calendarName: calendar.summary || 'Calendar', calendarId: calendar.id }));
-    })),
-    Promise.all(taskLists.map(async (list) => {
-      const url = `${TASKS}/lists/${encodeURIComponent(list.id)}/tasks?maxResults=100&showCompleted=true&showHidden=true`;
-      return (await pages(token, url)).filter((task) => taskVisibleOn(task, date)).map((task) => ({ ...task, listId: list.id, listName: list.title }));
-    })),
-  ]);
+    }));
   const events = eventGroups.flat().sort((a, b) => {
     if (Boolean(a.start?.date) !== Boolean(b.start?.date)) return a.start?.date ? -1 : 1;
     return new Date(a.start?.dateTime || a.start?.date || 0) - new Date(b.start?.dateTime || b.start?.date || 0);
   });
-  return { calendars, taskLists, events, tasks: taskGroups.flat() };
+  return { calendars, events };
+}
+
+export async function fetchGoogleDay(token, date) {
+  const [calendarDay, taskLists] = await Promise.all([
+    fetchGoogleCalendarDay(token, date),
+    pages(token, `${TASKS}/users/@me/lists?maxResults=100`),
+  ]);
+  const taskGroups = await Promise.all(taskLists.map(async (list) => {
+      const url = `${TASKS}/lists/${encodeURIComponent(list.id)}/tasks?maxResults=100&showCompleted=true&showHidden=true`;
+      return (await pages(token, url)).filter((task) => taskVisibleOn(task, date)).map((task) => ({ ...task, listId: list.id, listName: list.title }));
+    }));
+  return { ...calendarDay, taskLists, tasks: taskGroups.flat() };
 }
 
 export function createGoogleTask(token, listId, title, date) {
