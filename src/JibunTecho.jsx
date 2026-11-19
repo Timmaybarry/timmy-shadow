@@ -213,7 +213,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
           <label className="jt-date-picker">Select date<input type="date" value={date} onChange={(event) => event.target.value && setDate(event.target.value)} /></label>
           <a className="jt-health-link" href="#health">Jump to daily &amp; health ↓</a>
         </header>
-        <GoogleDay date={date}>
+        <GoogleDay date={date} initialClientId="285115057031-p6q8oaca3f1f0lkg5lf34j0q48gn2u9l.apps.googleusercontent.com">
         <div className="jt-day-grid">
           <section className="jt-card jt-priorities-card">
             <div className="jt-section-heading"><span className="jt-step">01</span><div><h3>Today’s top tasks</h3><p>Choose up to five local tasks for each area, in priority order. Remove a task from a list to make room.</p></div></div>

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { loadGoogleIdentity } from './googleIdentity.js';
-import { fetchGoogleEvents } from './googlePlanner.js';
+import { fetchGoogleCalendarDay } from './googlePlanner.js';
 
 const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
 const empty = { events: [] };
@@ -15,8 +15,8 @@ function eventTime(event, date) {
   return start.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-export default function GoogleDay({ date, children }) {
-  const [clientId, setClientId] = useState(import.meta.env.VITE_GOOGLE_CLIENT_ID || '');
+export default function GoogleDay({ date, children, initialClientId }) {
+  const [clientId, setClientId] = useState(initialClientId || import.meta.env.VITE_GOOGLE_CLIENT_ID || '');
   const [token, setToken] = useState('');
   const [expiresAt, setExpiresAt] = useState(0);
   const [data, setData] = useState(empty);
@@ -42,9 +42,9 @@ export default function GoogleDay({ date, children }) {
     let active = true;
     setLoading(true);
     setDataDate('');
-    fetchGoogleEvents(token, date).then((events) => {
+    fetchGoogleCalendarDay(token, date).then((result) => {
       if (!active) return;
-      setData({ events });
+      setData(result);
       setDataDate(date);
       setStatus('');
     }).catch((error) => {
@@ -97,7 +97,6 @@ export default function GoogleDay({ date, children }) {
     setStatus,
     loading,
     busy,
-    refresh,
     setRefresh,
     date,
     ready,
