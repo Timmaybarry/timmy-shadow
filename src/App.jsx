@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import MealTracker from './MealTracker.jsx';
-import GoogleDay, { GoogleSchedule } from './GoogleDay.jsx';
 import { DEFAULT_NUTRITION_GOALS, sanitizeGoals, sanitizeMeals } from './meals.js';
 
 const STORAGE_KEY = 'timmy-shadow-state';
@@ -177,7 +176,7 @@ function createHabitId() {
   return `habit-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
-function App({ state, setState, selectedDate, setSelectedDate }) {
+function DailyHealth({ state, setState, selectedDate }) {
   const today = dateKey();
   const [habitForm, setHabitForm] = useState({ name: '', icon: '✨' });
   const [habitError, setHabitError] = useState('');
@@ -189,7 +188,6 @@ function App({ state, setState, selectedDate, setSelectedDate }) {
   const habitTotal = state.habitDefinitions.length;
   const weightRange = 200 - state.goalWeight;
   const percent = weightRange > 0 ? Math.min(Math.max(((200 - state.weight) / weightRange) * 100, 0), 100) : 0;
-  const entryCount = Object.values(state.entries).filter((item) => Object.values(item).some((value) => String(value || '').trim())).length;
   const headline = useMemo(() => {
     if (state.weight <= state.goalWeight) return 'Goal on track';
     if (percent >= 75) return 'Strong momentum';
@@ -265,29 +263,22 @@ function App({ state, setState, selectedDate, setSelectedDate }) {
   }
 
   return (
-    <div
+    <div id="health" className="jt-health"
       style={{
-        minHeight: '100vh',
         background: '#111827',
         color: '#f9fafb',
-        padding: '16px 16px 28px',
+        padding: '20px 16px 8px',
         fontFamily: 'Inter, system-ui, sans-serif',
       }}
     >
-      <main style={{ maxWidth: '720px', margin: '0 auto', paddingBottom: '16px' }}>
+      <div style={{ maxWidth: '720px', margin: '0 auto', paddingBottom: '16px' }}>
         <header style={{ margin: '8px 0 24px' }}>
           <p style={{ color: '#34d399', fontSize: '12px', fontWeight: 700, letterSpacing: '0.14em', margin: '0 0 8px', textTransform: 'uppercase' }}>
-            Your daily planner
+            Your health
           </p>
-          <h1 style={{ margin: 0, fontSize: '2rem', letterSpacing: '-0.04em' }}>🌑 Timmy'sShadow</h1>
-          <p style={{ color: '#9ca3af', margin: '8px 0 0' }}>Your Personal Life Operating System</p>
+          <h2 style={{ margin: 0, fontSize: '1.6rem', letterSpacing: '-0.04em' }}>Daily &amp; health</h2>
+          <p style={{ color: '#9ca3af', margin: '8px 0 0' }}>{formatDate(selectedDate)} · Your health data is saved on this device.</p>
         </header>
-
-        <section id="google-calendar" style={cardStyle}>
-          <GoogleDay date={selectedDate}>
-            <GoogleSchedule />
-          </GoogleDay>
-        </section>
 
         <section id="home" style={{ ...cardStyle, background: 'linear-gradient(135deg, #1f2937, #172b2b)' }}>
           <p style={{ color: '#a7f3d0', fontSize: '13px', fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -403,17 +394,7 @@ function App({ state, setState, selectedDate, setSelectedDate }) {
         </section>
 
         <section id="journal" style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
-            <div>
-              <h2 style={{ margin: '0 0 5px', fontSize: '1.15rem' }}>Journal</h2>
-              <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>{entryCount} day{entryCount === 1 ? '' : 's'} with notes</p>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button type="button" aria-label="Previous day" onClick={() => setSelectedDate((day) => shiftDate(day, -1))} style={buttonStyle}>←</button>
-              <input aria-label="Select journal date" type="date" value={selectedDate} onChange={(event) => event.target.value && setSelectedDate(event.target.value)} style={{ ...inputStyle, width: 'auto', minWidth: '150px' }} />
-              <button type="button" aria-label="Next day" onClick={() => setSelectedDate((day) => shiftDate(day, 1))} style={buttonStyle}>→</button>
-            </div>
-          </div>
+          <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem' }}>Mood, energy &amp; recovery</h2>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px', marginBottom: '12px' }}>
             <label>
@@ -433,13 +414,8 @@ function App({ state, setState, selectedDate, setSelectedDate }) {
             </label>
           </div>
 
-          <TextArea label="Journal entry" value={entry.journal || ''} onChange={(value) => updateEntry('journal', value)} placeholder="What stood out today?" />
           <TextArea label="Recovery notes" value={entry.recovery || ''} onChange={(value) => updateEntry('recovery', value)} placeholder="How is your body feeling?" />
-          <label style={{ display: 'block', marginTop: '14px' }}>
-            <span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>Daily intention</span>
-            <input value={entry.notes || ''} onChange={(event) => updateEntry('notes', event.target.value)} placeholder="A small thing to focus on" style={inputStyle} />
-          </label>
-          <p style={{ color: '#6b7280', fontSize: '12px', margin: '12px 0 0' }}>Entries and habit history save automatically on this device.</p>
+          <p style={{ color: '#9ca3af', fontSize: '12px', margin: '12px 0 0' }}>Your daily notes and journal are in Take a moment to reflect above.</p>
         </section>
 
         <section id="workouts" style={cardStyle}>
@@ -521,15 +497,7 @@ function App({ state, setState, selectedDate, setSelectedDate }) {
           </div>
         </section>
 
-        <nav aria-label="Main navigation" style={{ position: 'sticky', bottom: '12px', background: 'rgba(31,41,55,0.96)', border: '1px solid #374151', borderRadius: '16px', padding: '10px 6px', display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '4px', marginTop: '20px' }}>
-          <NavLink href="#home" icon="🏠" label="Home" />
-          <NavLink href="#weekly" icon="📊" label="Week" />
-          <NavLink href="#habits" icon="✅" label="Habits" />
-          <NavLink href="#journal" icon="📓" label="Journal" />
-          <NavLink href="#workouts" icon="💪" label="Workout" />
-          <NavLink href="#meals" icon="🍽️" label="Meals" />
-        </nav>
-      </main>
+      </div>
     </div>
   );
 }
@@ -552,13 +520,4 @@ function TextArea({ label, value, onChange, placeholder }) {
   );
 }
 
-function NavLink({ href, icon, label }) {
-  return (
-    <a href={href} style={{ color: '#d1d5db', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '4px 8px', fontSize: '11px' }}>
-      <span aria-hidden="true" style={{ fontSize: '19px' }}>{icon}</span>
-      <span>{label}</span>
-    </a>
-  );
-}
-
-export default App;
+export default DailyHealth;

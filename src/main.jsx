@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import App, { dateKey, loadState } from './App.jsx';
+import { dateKey, loadState } from './App.jsx';
 import JibunTecho, { loadPlanner } from './JibunTecho.jsx';
 import NotesAndGoogle from './NotesAndGoogle.jsx';
 import { importTimmyOs } from './timmyOsImport.js';
@@ -138,14 +138,13 @@ function Root() {
     <header className="life-nav">
       <strong>Timmy Life Journal</strong>
       <nav aria-label="Life journal">
-        {[['planner', 'Planner'], ['daily', 'Daily & health'], ['brain', 'Second Brain']].map(([key, label]) =>
+        {[['planner', 'Planner'], ['brain', 'Second Brain']].map(([key, label]) =>
           <button key={key} type="button" aria-current={page === key ? 'page' : undefined} onClick={() => setPage(key)}>{label}</button>)}
       </nav>
       <DataTools planner={planner} shadow={shadow} setPlanner={setPlanner} setShadow={setShadow} />
     </header>
     {storageError && <p className="storage-error" role="alert">{storageError}</p>}
     {page === 'planner' && <JibunTecho s={planner} setS={setPlanner} date={date} setDate={setDate} shadow={shadow} setShadow={setShadow} openBrain={() => setPage('brain')} />}
-    {page === 'daily' && <App state={shadow} setState={setShadow} selectedDate={date} setSelectedDate={setDate} />}
     {page === 'brain' && <main className="brain-page"><NotesAndGoogle /></main>}
   </>;
 }

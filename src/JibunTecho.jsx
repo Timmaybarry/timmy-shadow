@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import GoogleDay, { GoogleSchedule, GoogleTasks } from './GoogleDay.jsx';
+import DailyHealth from './App.jsx';
 import './jibun.css';
 
 const KEY = 'jibun-techo-state';
@@ -211,6 +212,8 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
           <p className="jt-eyebrow">Your daily planner</p>
         <Nav label={parse(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} onPrev={() => setDate(shift(date, -1))} onNext={() => setDate(shift(date, 1))} onToday={() => setDate(today)} />
           <p className="jt-day-subtitle">A little structure for the things that matter.</p>
+          <label className="jt-date-picker">Select date<input type="date" value={date} onChange={(event) => event.target.value && setDate(event.target.value)} /></label>
+          <a className="jt-health-link" href="#health">Jump to daily &amp; health ↓</a>
         </header>
         <GoogleDay date={date}>
         <div className="jt-day-grid">
@@ -305,7 +308,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
                 {goalSelector(item, habit.name)}
               </div>;
             })}
-            <p className="jt-muted">Add or edit habits in Daily &amp; health.</p>
+            <p className="jt-muted"><a href="#habits">Add or edit habits in the habit tracker.</a></p>
           </section>
           <section className="jt-card jt-reflection-card">
             <div className="jt-section-heading"><span className="jt-step">07</span><div><h3>Take a moment to reflect</h3><p>Capture what you learned, what you noticed, and how you want to move forward.</p></div></div>
@@ -319,6 +322,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
           </section>
         </div>
         </GoogleDay>
+        <DailyHealth state={shadow} setState={setShadow} selectedDate={date} />
       </div>
     );
   }
