@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import MealTracker from './MealTracker.jsx';
+import GoogleDay, { GoogleSchedule } from './GoogleDay.jsx';
 import { DEFAULT_NUTRITION_GOALS, sanitizeGoals, sanitizeMeals } from './meals.js';
 
 const STORAGE_KEY = 'timmy-shadow-state';
@@ -281,6 +282,12 @@ function App({ state, setState, selectedDate, setSelectedDate }) {
           <h1 style={{ margin: 0, fontSize: '2rem', letterSpacing: '-0.04em' }}>🌑 Timmy'sShadow</h1>
           <p style={{ color: '#9ca3af', margin: '8px 0 0' }}>Your Personal Life Operating System</p>
         </header>
+
+        <section id="google-calendar" style={cardStyle}>
+          <GoogleDay date={selectedDate}>
+            <GoogleSchedule />
+          </GoogleDay>
+        </section>
 
         <section id="home" style={{ ...cardStyle, background: 'linear-gradient(135deg, #1f2937, #172b2b)' }}>
           <p style={{ color: '#a7f3d0', fontSize: '13px', fontWeight: 700, margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
