@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import GoogleDay from './GoogleDay.jsx';
+import GoogleDay, { GoogleSchedule, GoogleTasks } from './GoogleDay.jsx';
 import './jibun.css';
 
 const KEY = 'jibun-techo-state';
@@ -184,6 +184,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
         <Nav label={parse(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} onPrev={() => setDate(shift(date, -1))} onNext={() => setDate(shift(date, 1))} onToday={() => setDate(today)} />
           <p className="jt-day-subtitle">A little structure for the things that matter.</p>
         </header>
+        <GoogleDay date={date}>
         <div className="jt-day-grid">
           <section className="jt-card jt-focus-card">
             <div className="jt-section-heading"><span className="jt-step">01</span><div><h3>Choose your focus</h3><p>Add a goal and choose what deserves your attention today.</p></div></div>
@@ -204,10 +205,10 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
               </div>
             ))}
             <p><button onClick={() => newEvent(date)}>+ Add event</button></p>
-            <GoogleDay date={date} goals={goals} focusGoal={focusGoal} links={links} setLink={setLink} />
+            <GoogleSchedule />
           </section>
           <section className="jt-card">
-            <div className="jt-section-heading"><span className="jt-step">03</span><div><h3>Plan your tasks</h3><p>Local tasks due by this date stay here until complete. Google tasks are managed above.</p></div></div>
+            <div className="jt-section-heading"><span className="jt-step">03</span><div><h3>Plan your tasks</h3><p>Local and Google tasks due by this date stay here until complete.</p></div></div>
             {todos.map((t) => {
               const item = `local:${t.id}`;
               const aligned = focusGoal && links[item] === focusGoal;
@@ -221,6 +222,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
               </div>;
             })}
             <div className="jt-row"><input aria-label="New local task" placeholder="New local task" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} /><button className="p" onClick={add}>Add local task</button></div>
+            <GoogleTasks goals={goals} focusGoal={focusGoal} links={links} setLink={setLink} />
           </section>
           <section className="jt-card">
             <div className="jt-section-heading"><span className="jt-step">04</span><div><h3>Practice your habits</h3><p>Small steps add up. Link a habit to your focus goal if you like.</p></div></div>
@@ -248,6 +250,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
             {info.diary && <><h3>Earlier planner diary</h3><p>Your original planner diary is preserved here. Copy it into the shared journal if you wish.</p><textarea aria-label="Earlier planner diary" value={info.diary} onChange={(e) => setInfo({ diary: e.target.value })} /></>}
           </section>
         </div>
+        </GoogleDay>
       </div>
     );
   }
