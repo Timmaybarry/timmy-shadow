@@ -67,6 +67,31 @@ body { margin: 0; }
 .storage-error { margin: 0; padding: 12px; background: #7f1d1d; color: white; }
 .brain-page { min-height: 100vh; box-sizing: border-box; padding: 24px 16px 30px; background: #111827; }
 .brain-page section { max-width: 720px; }
+#google-calendar .jt-google { border-color: #374151; background: #17212f; color: #f9fafb; }
+#google-calendar .jt-google h3, #google-calendar .jt-google h4 { color: #f9fafb; }
+#google-calendar .jt-google p, #google-calendar .jt-google label { color: #d1d5db; }
+#google-calendar .jt-google button {
+  border: 1px solid #4b5563;
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: #111827;
+  color: #e5e7eb;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+#google-calendar .jt-google button:disabled { opacity: .6; cursor: not-allowed; }
+#google-calendar .jt-google input {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 5px;
+  padding: 10px 12px;
+  border: 1px solid #4b5563;
+  border-radius: 10px;
+  background: #111827;
+  color: #f9fafb;
+  font: inherit;
+}
 @media (max-width: 640px) {
   .life-nav { gap: 8px; padding: 10px 12px; }
   .life-nav strong { flex-basis: calc(100% - 150px); }
