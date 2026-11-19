@@ -113,5 +113,5 @@ test('calendar-only schedule does not request Google Tasks', async () => {
   const result = await fetchGoogleCalendarDay('token', '2026-11-14');
   assert.equal(result.events[0].summary, 'Meeting');
   assert.equal(calls.length, 2);
-  assert.ok(calls.every((url) => !url.includes('tasks.googleapis.com')));
+  assert.ok(calls.every((url) => new URL(url).hostname !== 'tasks.googleapis.com'));
 });
