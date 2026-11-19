@@ -27,6 +27,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
   const [editing, setEditing] = useState(null);
   const [text, setText] = useState('');
   const [goalText, setGoalText] = useState('');
+  const [priorityText, setPriorityText] = useState({ personal: '', work: '' });
 
   const upd = (patch) => setS((p) => ({ ...p, ...patch }));
   const open = (k, v = 'day') => { setDate(k); setView(v); };
@@ -161,6 +162,25 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
     </label>;
     const todos = s.todos.filter((t) => t.done ? t.date === date : !t.date || t.date <= date);
     const add = () => { if (!text.trim()) return; upd({ todos: [...s.todos, { id: uid(), date, text: text.trim(), done: false }] }); setText(''); };
+    const priorities = info.priorities || {};
+    const priorityIds = (group) => (priorities[group] || []).filter((id) => s.todos.some((task) => task.id === id));
+    const selectedIds = [...priorityIds('personal'), ...priorityIds('work')];
+    const availableTasks = todos.filter((task) => !task.done && !selectedIds.includes(task.id));
+    const selectPriority = (group, id) => {
+      if (!id || selectedIds.includes(id) || priorityIds(group).length >= 5) return;
+      setInfo({ priorities: { ...priorities, [group]: [...priorityIds(group), id] } });
+    };
+    const addPriority = (group) => {
+      const title = priorityText[group].trim();
+      if (!title || priorityIds(group).length >= 5) return;
+      const task = { id: uid(), date, text: title, done: false };
+      setS((current) => ({
+        ...current,
+        todos: [...current.todos, task],
+        days: { ...current.days, [date]: { ...current.days[date], priorities: { ...priorities, [group]: [...priorityIds(group), task.id] } } },
+      }));
+      setPriorityText((current) => ({ ...current, [group]: '' }));
+    };
     const addGoal = () => {
       if (!goalText.trim()) return;
       setS((current) => ({ ...current, goals: [...(current.goals || []), { id: uid(), name: goalText.trim() }] }));
@@ -177,6 +197,14 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
     };
     const entry = shadow.entries[date] || {};
     const setEntry = (field, value) => setShadow((current) => ({ ...current, entries: { ...current.entries, [date]: { ...current.entries[date], [field]: value } } }));
+    const scheduled = [
+      ...eventsOn(date).map((event) => ({ type: 'event', time: event.start, event })),
+      ...shadow.habitDefinitions.filter((habit) => info.habitTimes?.[habit.id]).map((habit) => ({ type: 'habit', time: info.habitTimes[habit.id], habit })),
+    ].sort((a, b) => a.time.localeCompare(b.time));
+    const periodGoals = [
+      ...Object.entries(s.yearGoals).filter(([, value]) => value.trim()).map(([period, value]) => ({ label: `Year ${period}`, value })),
+      ...Object.entries(s.monthGoals).filter(([, value]) => value.trim()).map(([period, value]) => ({ label: `Month ${period}`, value })),
+    ];
     return (
       <div className="jt-day">
         <header className="jt-day-hero">
@@ -186,29 +214,68 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
         </header>
         <GoogleDay date={date}>
         <div className="jt-day-grid">
+          <section className="jt-card jt-priorities-card">
+            <div className="jt-section-heading"><span className="jt-step">01</span><div><h3>Today’s top tasks</h3><p>Choose up to five local tasks for each area, in priority order. Remove a task from a list to make room.</p></div></div>
+            <div className="jt-priority-grid">
+              {['personal', 'work'].map((group) => {
+                const ids = priorityIds(group);
+                const label = group === 'personal' ? 'Personal' : 'Work';
+                return <div key={group} className="jt-priority-list">
+                  <h4>Top 5 {label.toLowerCase()} tasks <small>{ids.length}/5</small></h4>
+                  {ids.length === 0 && <p className="jt-muted">No {group} priorities selected yet.</p>}
+                  {ids.map((id, index) => {
+                    const task = s.todos.find((item) => item.id === id);
+                    return <div className="jt-row" key={id}>
+                      <span>{index + 1}.</span>
+                      <input type="checkbox" aria-label={`Complete ${task.text}`} checked={task.done} onChange={() => upd({ todos: s.todos.map((item) => item.id === id ? { ...item, done: !item.done } : item) })} />
+                      <span className={`t ${task.done ? 'done' : ''}`}>{task.text}</span>
+                      <button type="button" aria-label={`Remove ${task.text} from ${group} priorities`} onClick={() => setInfo({ priorities: { ...priorities, [group]: ids.filter((item) => item !== id) } })}>Remove</button>
+                    </div>;
+                  })}
+                  <label>Add an existing task to {group}
+                    <select value="" disabled={ids.length >= 5 || !availableTasks.length} onChange={(event) => selectPriority(group, event.target.value)}>
+                      <option value="">{availableTasks.length ? 'Choose a task' : 'No available local tasks'}</option>
+                      {availableTasks.map((task) => <option key={task.id} value={task.id}>{task.text}{task.date ? ` (${task.date})` : ''}</option>)}
+                    </select>
+                  </label>
+                  <form className="jt-actions" onSubmit={(event) => { event.preventDefault(); addPriority(group); }}>
+                    <input aria-label={`New ${group} priority`} placeholder={`New ${group} task`} value={priorityText[group]} onChange={(event) => setPriorityText((current) => ({ ...current, [group]: event.target.value }))} disabled={ids.length >= 5} />
+                    <button disabled={ids.length >= 5 || !priorityText[group].trim()}>Add</button>
+                  </form>
+                </div>;
+              })}
+            </div>
+            <p className="jt-muted">Google Tasks remain available under Plan your tasks.</p>
+          </section>
+          <section className="jt-card jt-log-card">
+            <div className="jt-section-heading"><span className="jt-step">02</span><div><h3>Focus &amp; running log</h3><p>Keep the task at hand visible and capture actions as your day unfolds.</p></div></div>
+            <label>What am I focusing on now?<input value={info.currentFocus || ''} onChange={(event) => setInfo({ currentFocus: event.target.value })} placeholder="The next action or task" /></label>
+            <label>Running log<textarea value={info.actionLog || ''} onChange={(event) => setInfo({ actionLog: event.target.value })} placeholder="Record actions, progress, and what to do next…" /></label>
+          </section>
           <section className="jt-card jt-focus-card">
-            <div className="jt-section-heading"><span className="jt-step">01</span><div><h3>Choose your focus</h3><p>Add a goal and choose what deserves your attention today.</p></div></div>
+            <div className="jt-section-heading"><span className="jt-step">03</span><div><h3>Your goals</h3><p>Keep all your goals in view and choose one to focus on today.</p></div></div>
             <div className="jt-actions"><input aria-label="New goal" placeholder="A goal that matters to you" value={goalText} onChange={(event) => setGoalText(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && addGoal()} /><button onClick={addGoal} disabled={!goalText.trim()}>Add goal</button></div>
             <label>Focus goal for this date<select value={focusGoal} onChange={(event) => setInfo({ focusGoal: event.target.value })}><option value="">Choose a focus goal</option>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.name}</option>)}</select></label>
-            {goals.length > 0 && <details><summary>Manage goals</summary>{goals.map((goal) => <div className="jt-row" key={goal.id}><span className="t">{goal.name}</span><button className="d" onClick={() => removeGoal(goal)}>Remove</button></div>)}</details>}
+            {goals.length === 0 ? <p className="jt-muted">No goals yet. Add one above.</p> : goals.map((goal) => <div className="jt-row" key={goal.id}><span className="t">{goal.name}</span><button className="d" onClick={() => removeGoal(goal)}>Remove</button></div>)}
+            {periodGoals.length > 0 && <div className="jt-period-goals"><h4>Year and month goals</h4>{periodGoals.map(({ label, value }) => <div key={label}><strong>{label}</strong><p>{value}</p></div>)}<p className="jt-muted">Edit these goals in the Year and Month tabs.</p></div>}
             <div className="jt-checkin">
               <div><span>Weather</span>{WEATHER.map((w) => <button key={w} aria-label={`Weather ${w}`} className={info.weather === w ? 'p' : ''} onClick={() => setInfo({ weather: info.weather === w ? '' : w })}>{w}</button>)}</div>
               <div><span>Mood</span>{MOODS.map((m) => <button key={m} aria-label={`Mood ${m}`} className={info.mood === m ? 'p' : ''} onClick={() => setInfo({ mood: info.mood === m ? '' : m })}>{m}</button>)}</div>
             </div>
           </section>
           <section className="jt-card">
-            <div className="jt-section-heading"><span className="jt-step">02</span><div><h3>Review your schedule</h3><p>Your plans for the day, all in one place.</p></div></div>
-            {eventsOn(date).map((e) => (
-              <div key={e.id} className="jt-row" onClick={() => setEditing(e)}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: e.color }} />
-                <span>{e.start ? `${e.start}${e.end ? `–${e.end}` : ''}` : 'All day'}</span><span className="t">{e.title}</span>
-              </div>
-            ))}
+            <div className="jt-section-heading"><span className="jt-step">04</span><div><h3>Review your schedule</h3><p>Your plans for the day, all in one place.</p></div></div>
+            {scheduled.map((item) => item.type === 'event' ? <div key={`event:${item.event.id}`} className="jt-row" onClick={() => setEditing(item.event)}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: item.event.color }} />
+              <span>{item.time ? `${item.time}${item.event.end ? `–${item.event.end}` : ''}` : 'All day'}</span><span className="t">{item.event.title}</span>
+            </div> : <div key={`habit:${item.habit.id}`} className="jt-row">
+              <span>{item.time}</span><span className="t">{item.habit.icon} {item.habit.name}</span><small>Habit</small>
+            </div>)}
             <p><button onClick={() => newEvent(date)}>+ Add event</button></p>
             <GoogleSchedule />
           </section>
           <section className="jt-card">
-            <div className="jt-section-heading"><span className="jt-step">03</span><div><h3>Plan your tasks</h3><p>Local and Google tasks due by this date stay here until complete.</p></div></div>
+            <div className="jt-section-heading"><span className="jt-step">05</span><div><h3>Plan your tasks</h3><p>Local and Google tasks due by this date stay here until complete.</p></div></div>
             {todos.map((t) => {
               const item = `local:${t.id}`;
               const aligned = focusGoal && links[item] === focusGoal;
@@ -225,7 +292,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
             <GoogleTasks goals={goals} focusGoal={focusGoal} links={links} setLink={setLink} />
           </section>
           <section className="jt-card">
-            <div className="jt-section-heading"><span className="jt-step">04</span><div><h3>Practice your habits</h3><p>Small steps add up. Link a habit to your focus goal if you like.</p></div></div>
+            <div className="jt-section-heading"><span className="jt-step">06</span><div><h3>Schedule your habits</h3><p>Set a time for this day and check off habits as you complete them.</p></div></div>
             {shadow.habitDefinitions.map((habit) => {
               const item = `habit:${habit.id}`;
               const aligned = focusGoal && links[item] === focusGoal;
@@ -234,13 +301,14 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
                   <input type="checkbox" checked={Boolean(shadow.habitsByDate[date]?.[habit.id])} onChange={(e) => setShadow((current) => ({ ...current, habitsByDate: { ...current.habitsByDate, [date]: { ...current.habitsByDate[date], [habit.id]: e.target.checked } } }))} />
                   <span>{habit.icon} {habit.name} {aligned && <strong>· Today’s focus</strong>}</span>
                 </label>
+                <label className="jt-habit-time">Time for {habit.name}<input type="time" value={info.habitTimes?.[habit.id] || ''} onChange={(event) => setInfo({ habitTimes: { ...info.habitTimes, [habit.id]: event.target.value } })} /></label>
                 {goalSelector(item, habit.name)}
               </div>;
             })}
             <p className="jt-muted">Add or edit habits in Daily &amp; health.</p>
           </section>
           <section className="jt-card jt-reflection-card">
-            <div className="jt-section-heading"><span className="jt-step">05</span><div><h3>Take a moment to reflect</h3><p>Capture what you learned, what you noticed, and how you want to move forward.</p></div></div>
+            <div className="jt-section-heading"><span className="jt-step">07</span><div><h3>Take a moment to reflect</h3><p>Capture what you learned, what you noticed, and how you want to move forward.</p></div></div>
             <div className="jt-reflection-grid">
               <label>Silent Strength reading<textarea value={entry.silentStrength || ''} onChange={(e) => setEntry('silentStrength', e.target.value)} placeholder="What stood out and how can you apply it today?" /></label>
               <label>Daily Stoic reading<textarea value={entry.dailyStoic || ''} onChange={(e) => setEntry('dailyStoic', e.target.value)} placeholder="What did you learn and what will you practice?" /></label>

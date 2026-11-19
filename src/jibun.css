@@ -41,7 +41,13 @@
 .jt-day-subtitle{margin:8px 0 0;color:#7e786e;font-size:14px}
 .jt-day-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
 .jt-day-grid>.jt-card{min-width:0;background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 4px 14px rgba(69,54,30,.04)}
-.jt-day-grid>.jt-focus-card,.jt-day-grid>.jt-reflection-card{grid-column:1/-1}
+.jt-day-grid>.jt-priorities-card,.jt-day-grid>.jt-log-card,.jt-day-grid>.jt-focus-card,.jt-day-grid>.jt-reflection-card{grid-column:1/-1}
+.jt-priority-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.jt-priority-list h4{margin:0 0 10px}.jt-priority-list h4 small{color:#817a70;font-weight:400}
+.jt-priority-list>label{margin-top:12px}.jt-day-grid .jt-priority-list .jt-actions{margin:10px 0 0}
+.jt-log-card label{font-weight:600;margin-top:12px}.jt-log-card input,.jt-log-card textarea{margin-top:6px;font-weight:400}.jt-log-card textarea{min-height:160px}
+.jt-habit-time{margin-top:8px;color:#625b4f}.jt .jt-habit-time input{display:block;width:auto;margin-top:4px}
+.jt-period-goals{margin-top:14px}.jt-period-goals h4{margin:0 0 8px}.jt-period-goals p{white-space:pre-wrap;margin:4px 0 12px}
 .jt-section-heading{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
 .jt-section-heading h3{margin:0 0 4px;font-size:17px;color:var(--ink);letter-spacing:-.02em}
 .jt-section-heading p{margin:0;color:#817a70;font-size:13px;line-height:1.5}
@@ -69,8 +75,9 @@
   .jt{padding:12px 10px 94px}
   .jt-page{padding:16px;border-radius:16px}
   .jt-day-grid{grid-template-columns:1fr;gap:12px}
-  .jt-day-grid>.jt-focus-card,.jt-day-grid>.jt-reflection-card{grid-column:auto}
+  .jt-day-grid>.jt-priorities-card,.jt-day-grid>.jt-log-card,.jt-day-grid>.jt-focus-card,.jt-day-grid>.jt-reflection-card{grid-column:auto}
   .jt-day-grid>.jt-card{padding:16px}
+  .jt-priority-grid{grid-template-columns:1fr}
   .jt-reflection-grid{grid-template-columns:1fr}
   .jt-nav{bottom:8px;width:calc(100% - 16px);border-radius:12px}
   .jt-nav button{font-size:11px;padding:13px 1px}
