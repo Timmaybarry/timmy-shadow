@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import GoogleDay, { GoogleSchedule, GoogleTasks } from './GoogleDay.jsx';
+import GoogleDay, { GoogleSchedule } from './GoogleDay.jsx';
 import DailyHealth from './App.jsx';
 import './jibun.css';
 
@@ -26,7 +26,6 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
   const today = key(new Date());
   const [view, setView] = useState('day');
   const [editing, setEditing] = useState(null);
-  const [text, setText] = useState('');
   const [goalText, setGoalText] = useState('');
   const [priorityText, setPriorityText] = useState({ personal: '', work: '' });
 
@@ -161,12 +160,11 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
         <option value="">No linked goal</option>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.name}</option>)}
       </select>
     </label>;
-    const todos = s.todos.filter((t) => t.done ? t.date === date : !t.date || t.date <= date);
-    const add = () => { if (!text.trim()) return; upd({ todos: [...s.todos, { id: uid(), date, text: text.trim(), done: false }] }); setText(''); };
     const priorities = info.priorities || {};
     const priorityIds = (group) => (priorities[group] || []).filter((id) => s.todos.some((task) => task.id === id));
     const selectedIds = [...priorityIds('personal'), ...priorityIds('work')];
-    const availableTasks = todos.filter((task) => !task.done && !selectedIds.includes(task.id));
+    const availableTasks = s.todos.filter((task) =>
+      !task.done && (!task.date || task.date <= date) && !selectedIds.includes(task.id));
     const selectPriority = (group, id) => {
       if (!id || selectedIds.includes(id) || priorityIds(group).length >= 5) return;
       setInfo({ priorities: { ...priorities, [group]: [...priorityIds(group), id] } });
@@ -248,7 +246,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
                 </div>;
               })}
             </div>
-            <p className="jt-muted">Google Tasks remain available under Plan your tasks.</p>
+            <p className="jt-muted">Add a task here or choose one from your existing local tasks.</p>
           </section>
           <section className="jt-card jt-log-card">
             <div className="jt-section-heading"><span className="jt-step">02</span><div><h3>Focus &amp; running log</h3><p>Keep the task at hand visible and capture actions as your day unfolds.</p></div></div>
@@ -278,24 +276,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
             <GoogleSchedule />
           </section>
           <section className="jt-card">
-            <div className="jt-section-heading"><span className="jt-step">05</span><div><h3>Plan your tasks</h3><p>Local and Google tasks due by this date stay here until complete.</p></div></div>
-            {todos.map((t) => {
-              const item = `local:${t.id}`;
-              const aligned = focusGoal && links[item] === focusGoal;
-              return <div key={t.id} className={`jt-task ${aligned ? 'jt-aligned' : ''}`}>
-                <div className="jt-row">
-                  <input aria-label={`Complete ${t.text}`} type="checkbox" checked={t.done} onChange={() => upd({ todos: s.todos.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x)) })} />
-                  <span className={`t ${t.done ? 'done' : ''}`}>{t.text} {aligned && <strong>· Today’s focus</strong>}{t.date !== date && <><br /><small>{t.date ? `Due ${t.date}` : 'No due date'}</small></>}</span>
-                  <button className="d" aria-label={`Delete ${t.text}`} onClick={() => upd({ todos: s.todos.filter((x) => x.id !== t.id) })}>✕</button>
-                </div>
-                {goalSelector(item, t.text)}
-              </div>;
-            })}
-            <div className="jt-row"><input aria-label="New local task" placeholder="New local task" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} /><button className="p" onClick={add}>Add local task</button></div>
-            <GoogleTasks goals={goals} focusGoal={focusGoal} links={links} setLink={setLink} />
-          </section>
-          <section className="jt-card">
-            <div className="jt-section-heading"><span className="jt-step">06</span><div><h3>Schedule your habits</h3><p>Set a time for this day and check off habits as you complete them.</p></div></div>
+            <div className="jt-section-heading"><span className="jt-step">05</span><div><h3>Schedule your habits</h3><p>Set a time for this day and check off habits as you complete them.</p></div></div>
             {shadow.habitDefinitions.map((habit) => {
               const item = `habit:${habit.id}`;
               const aligned = focusGoal && links[item] === focusGoal;
@@ -311,7 +292,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
             <p className="jt-muted"><a href="#habits">Add or edit habits in the habit tracker.</a></p>
           </section>
           <section className="jt-card jt-reflection-card">
-            <div className="jt-section-heading"><span className="jt-step">07</span><div><h3>Take a moment to reflect</h3><p>Capture what you learned, what you noticed, and how you want to move forward.</p></div></div>
+            <div className="jt-section-heading"><span className="jt-step">06</span><div><h3>Take a moment to reflect</h3><p>Capture what you learned, what you noticed, and how you want to move forward.</p></div></div>
             <div className="jt-reflection-grid">
               <label>Silent Strength reading<textarea value={entry.silentStrength || ''} onChange={(e) => setEntry('silentStrength', e.target.value)} placeholder="What stood out and how can you apply it today?" /></label>
               <label>Daily Stoic reading<textarea value={entry.dailyStoic || ''} onChange={(e) => setEntry('dailyStoic', e.target.value)} placeholder="What did you learn and what will you practice?" /></label>

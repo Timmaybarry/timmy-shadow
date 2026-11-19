@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { loadGoogleIdentity } from './googleIdentity.js';
-import { createGoogleTask, fetchGoogleDay, googleTaskKey, setGoogleTaskDone } from './googlePlanner.js';
+import { fetchGoogleEvents } from './googlePlanner.js';
 
-const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/tasks';
-const empty = { events: [], tasks: [], taskLists: [] };
+const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+const empty = { events: [] };
 const GoogleDayContext = createContext(null);
 
 function eventTime(event, date) {
@@ -25,8 +25,6 @@ export default function GoogleDay({ date, children }) {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [refresh, setRefresh] = useState(0);
-  const [title, setTitle] = useState('');
-  const [listId, setListId] = useState('');
 
   useEffect(() => {
     if (!token) return undefined;
@@ -44,11 +42,10 @@ export default function GoogleDay({ date, children }) {
     let active = true;
     setLoading(true);
     setDataDate('');
-    fetchGoogleDay(token, date).then((result) => {
+    fetchGoogleEvents(token, date).then((events) => {
       if (!active) return;
-      setData(result);
+      setData({ events });
       setDataDate(date);
-      setListId((current) => result.taskLists.some((list) => list.id === current) ? current : result.taskLists[0]?.id || '');
       setStatus('');
     }).catch((error) => {
       if (!active) return;
@@ -89,28 +86,6 @@ export default function GoogleDay({ date, children }) {
     }
   }
 
-  async function addTask(event) {
-    event.preventDefault();
-    const text = title.trim();
-    if (!text || !listId) return;
-    setBusy(true);
-    try {
-      await createGoogleTask(token, listId, text, date);
-      setTitle('');
-      setRefresh((value) => value + 1);
-    } catch (error) { setStatus(`${error.message} Task was not confirmed. Refresh before retrying.`); }
-    finally { setBusy(false); }
-  }
-
-  async function toggleTask(task) {
-    setBusy(true);
-    try {
-      await setGoogleTaskDone(token, task.listId, task.id, task.status !== 'completed');
-      setRefresh((value) => value + 1);
-    } catch (error) { setStatus(`${error.message} The change was not confirmed. Refresh before retrying.`); }
-    finally { setBusy(false); }
-  }
-
   const ready = token && !loading && dataDate === date;
   const value = {
     clientId,
@@ -127,12 +102,6 @@ export default function GoogleDay({ date, children }) {
     date,
     ready,
     connect,
-    addTask,
-    toggleTask,
-    title,
-    setTitle,
-    listId,
-    setListId,
     setData,
     setDataDate,
   };
@@ -171,41 +140,5 @@ export function GoogleSchedule() {
         <span>{eventTime(event, date)}</span><span className="t">{event.summary || '(No title)'}</span><small>{event.calendarName}</small>
       </div>)}
     </>}
-  </section>;
-}
-
-export function GoogleTasks({ goals, focusGoal, links, setLink }) {
-  const {
-    token, data, loading, busy, date, ready, addTask, toggleTask, title, setTitle, listId,
-  } = useGoogleDay();
-  return <section className="jt-google">
-      <h3>Google Tasks</h3>
-      {!token && <p>Connect Google in Review your schedule to show your tasks for this day.</p>}
-      {token && loading && <p role="status">Loading Google tasks…</p>}
-      {ready && <>
-        <p>Showing tasks due by this date and undated tasks. Completed tasks appear on their due date.</p>
-        {data.tasks.length === 0 && <p>No Google tasks for this day.</p>}
-        {data.tasks.map((task) => {
-          const taskKey = googleTaskKey(task.listId, task.id);
-          const aligned = focusGoal && links[taskKey] === focusGoal;
-          return <div key={taskKey} className={`jt-task ${aligned ? 'jt-aligned' : ''}`}>
-            <div className="jt-row">
-              <input aria-label={`Complete ${task.title}`} type="checkbox" checked={task.status === 'completed'} disabled={busy} onChange={() => toggleTask(task)} />
-              <span className={`t ${task.status === 'completed' ? 'done' : ''}`}>{task.title || '(No title)'} {aligned && <strong>· Today’s focus</strong>}<br /><small>{task.listName} · {task.due ? `Due ${task.due.slice(0, 10)}` : 'No due date'}</small></span>
-            </div>
-            <label className="jt-link">Goal for {task.title || 'task'}
-              <select value={links[taskKey] || ''} onChange={(event) => setLink(taskKey, event.target.value)}>
-                <option value="">No linked goal</option>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.name}</option>)}
-              </select>
-            </label>
-          </div>;
-        })}
-        <form className="jt-task-form" onSubmit={addTask}>
-          <label>New Google task<input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Task title" /></label>
-          <label>Task list<select value={listId} onChange={(event) => setListId(event.target.value)}>{data.taskLists.map((list) => <option key={list.id} value={list.id}>{list.title}</option>)}</select></label>
-          <button className="p" disabled={busy || !title.trim() || !listId}>Add for {date}</button>
-        </form>
-        {!data.taskLists.length && <p>No Google task lists found. Create one in Google Tasks and refresh.</p>}
-      </>}
   </section>;
 }
