@@ -151,14 +151,7 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
     const info = s.days[date] || {};
     const setInfo = (p) => upd({ days: { ...s.days, [date]: { ...info, ...p } } });
     const goals = s.goals || [];
-    const links = s.goalLinks || {};
     const focusGoal = info.focusGoal || '';
-    const setLink = (item, goal) => setS((current) => ({ ...current, goalLinks: { ...current.goalLinks, [item]: goal } }));
-    const goalSelector = (item, label) => <label className="jt-link">Goal for {label}
-      <select value={links[item] || ''} onChange={(event) => setLink(item, event.target.value)}>
-        <option value="">No linked goal</option>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.name}</option>)}
-      </select>
-    </label>;
     const todos = s.todos.filter((t) => t.done ? t.date === date : !t.date || t.date <= date);
     const priorities = info.priorities || {};
     const priorityIds = (group) => (priorities[group] || []).filter((id) => s.todos.some((task) => task.id === id));
@@ -271,24 +264,8 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
             <p><button onClick={() => newEvent(date)}>+ Add event</button></p>
             <GoogleSchedule />
           </section>
-          <section className="jt-card">
-            <div className="jt-section-heading"><span className="jt-step">05</span><div><h3>Schedule your habits</h3><p>Set a time for this day and check off habits as you complete them.</p></div></div>
-            {shadow.habitDefinitions.map((habit) => {
-              const item = `habit:${habit.id}`;
-              const aligned = focusGoal && links[item] === focusGoal;
-              return <div key={habit.id} className={`jt-task ${aligned ? 'jt-aligned' : ''}`}>
-                <label className="jt-row">
-                  <input type="checkbox" checked={Boolean(shadow.habitsByDate[date]?.[habit.id])} onChange={(e) => setShadow((current) => ({ ...current, habitsByDate: { ...current.habitsByDate, [date]: { ...current.habitsByDate[date], [habit.id]: e.target.checked } } }))} />
-                  <span>{habit.icon} {habit.name} {aligned && <strong>· Today’s focus</strong>}</span>
-                </label>
-                <label className="jt-habit-time">Time for {habit.name}<input type="time" value={info.habitTimes?.[habit.id] || ''} onChange={(event) => setInfo({ habitTimes: { ...info.habitTimes, [habit.id]: event.target.value } })} /></label>
-                {goalSelector(item, habit.name)}
-              </div>;
-            })}
-            <p className="jt-muted">Add or edit habits in Daily &amp; health.</p>
-          </section>
           <section className="jt-card jt-reflection-card">
-            <div className="jt-section-heading"><span className="jt-step">06</span><div><h3>Take a moment to reflect</h3><p>Capture what you learned, what you noticed, and how you want to move forward.</p></div></div>
+            <div className="jt-section-heading"><span className="jt-step">05</span><div><h3>Take a moment to reflect</h3><p>Capture what you learned, what you noticed, and how you want to move forward.</p></div></div>
             <div className="jt-reflection-grid">
               <label>Silent Strength reading<textarea value={entry.silentStrength || ''} onChange={(e) => setEntry('silentStrength', e.target.value)} placeholder="What stood out and how can you apply it today?" /></label>
               <label>Daily Stoic reading<textarea value={entry.dailyStoic || ''} onChange={(e) => setEntry('dailyStoic', e.target.value)} placeholder="What did you learn and what will you practice?" /></label>
