@@ -106,7 +106,7 @@ function DataTools({ data, setData, cloud }) {
       const result = importDaybook(JSON.parse(await file.text()), shadow);
       if (!window.confirm('Merge this Daybook 2027 backup? Existing entries are kept; reflections are appended to each day’s journal.')) return;
       setData((current) => ({ ...current, shadow: result.shadow }));
-      setMessage(`Daybook merged: ${result.imported} day${result.imported === 1 ? '' : 's'} added to the journal.`); merged: ${result.imported} day${result.imported === 1 ? '' : 's'} added to the journal.`);
+      setMessage(`Daybook merged: ${result.imported} day${result.imported === 1 ? '' : 's'}       added to the journal.`);
     } catch (error) {
       setMessage(error instanceof SyntaxError ? 'The file is not valid JSON.' : `Could not import: ${error.message}`);
     } finally {
