@@ -129,6 +129,7 @@ export function loadState(today) {
       meals: sanitizeMeals(saved.meals),
       nutritionGoals: sanitizeGoals(saved.nutritionGoals),
       timmyOsJournalImports: saved.timmyOsJournalImports || {},
+      daybookImports: saved.daybookImports || {},
     };
   } catch {
     return defaults;
