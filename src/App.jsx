@@ -61,7 +61,7 @@ function getLastSevenDays() {
   });
 }
 
-function makeDefaultState(today) {
+export function makeDefaultState(today) {
   return {
     weight: 185,
     goalWeight: 160,
@@ -97,10 +97,10 @@ function makeDefaultState(today) {
   };
 }
 
-export function loadState(today) {
+export function loadState(today, override) {
   const defaults = makeDefaultState(today);
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    const saved = override === undefined ? JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') : override;
     if (!saved || typeof saved !== 'object') return defaults;
 
     const habitsByDate = saved.habitsByDate || {
@@ -177,7 +177,7 @@ function createHabitId() {
   return `habit-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
-function App({ state, setState, selectedDate, setSelectedDate }) {
+function App({ state, setState, selectedDate, setSelectedDate, cloud }) {
   const today = dateKey();
   const [habitForm, setHabitForm] = useState({ name: '', icon: '✨' });
   const [habitError, setHabitError] = useState('');
@@ -439,7 +439,7 @@ function App({ state, setState, selectedDate, setSelectedDate }) {
             <span style={{ display: 'block', marginBottom: '7px', fontSize: '14px' }}>Daily intention</span>
             <input value={entry.notes || ''} onChange={(event) => updateEntry('notes', event.target.value)} placeholder="A small thing to focus on" style={inputStyle} />
           </label>
-          <p style={{ color: '#6b7280', fontSize: '12px', margin: '12px 0 0' }}>Entries and habit history save automatically on this device.</p>
+          <p style={{ color: '#6b7280', fontSize: '12px', margin: '12px 0 0' }}>{cloud ? 'Entries and habit history save on this device and sync when connected.' : 'Entries and habit history save automatically on this device.'}</p>
         </section>
 
         <section id="workouts" style={cardStyle}>
