@@ -5,6 +5,8 @@ import App, { dateKey, loadState, makeDefaultState } from './App.jsx';
 import JibunTecho, { emptyPlanner, loadPlanner } from './JibunTecho.jsx';
 import NotesAndGoogle, { readNotes } from './NotesAndGoogle.jsx';
 import { importTimmyOs } from './timmyOsImport.js';
+import { importDaybook } from './daybookImport.js';
+import { toIcs } from './ics.js';
 import { CloudStore } from './cloudStore.js';
 import './shell.css';
 
@@ -33,6 +35,7 @@ function DataTools({ data, setData, cloud }) {
   const { planner, shadow, notes } = data;
   const restoreInput = useRef(null);
   const importInput = useRef(null);
+  const daybookInput = useRef(null);
   const [message, setMessage] = useState('');
 
   function downloadBackup() {
@@ -96,6 +99,31 @@ function DataTools({ data, setData, cloud }) {
     }
   }
 
+  async function importDaybookBackup(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const result = importDaybook(JSON.parse(await file.text()), shadow);
+      if (!window.confirm('Merge this Daybook 2027 backup? Existing entries are kept; reflections are appended to each day’s journal.')) return;
+      setData((current) => ({ ...current, shadow: result.shadow }));
+      setMessage(`Daybook merged: ${result.imported} day${result.imported === 1 ? '' : 's'}       added to the journal.`);
+    } catch (error) {
+      setMessage(error instanceof SyntaxError ? 'The file is not valid JSON.' : `Could not import: ${error.message}`);
+    } finally {
+      event.target.value = '';
+    }
+  }
+
+  function downloadIcs() {
+    const url = URL.createObjectURL(new Blob([toIcs(planner)], { type: 'text/calendar' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `timmy-life-journal-${dateKey()}.ics`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setMessage('Calendar exported. Undated tasks are not included.');
+  }
+
   return <details className="data-tools">
     <summary>Backup &amp; import</summary>
     <div className="data-panel">
@@ -103,6 +131,9 @@ function DataTools({ data, setData, cloud }) {
       <button onClick={downloadBackup}>Download backup</button>
       <button onClick={() => restoreInput.current?.click()}>Restore backup</button>
       <button onClick={() => importInput.current?.click()}>Import Timmy OS</button>
+            <button onClick={() => daybookInput.current?.click()}>Import Daybook 2027</button>
+            <button onClick={downloadIcs}>Export calendar (.ics)</button>
+            <input ref={daybookInput} type="file" accept=".json,application/json" onChange={importDaybookBackup} hidden aria-label="Choose a Daybook 2027 backup" />
       <input ref={restoreInput} type="file" accept=".json,application/json" onChange={restoreBackup} hidden aria-label="Choose a life journal backup" />
       <input ref={importInput} type="file" accept=".json,application/json" onChange={importBackup} hidden aria-label="Choose a Timmy OS backup" />
       <a href={ONEDRIVE_FOLDER_URL} target="_blank" rel="noopener noreferrer">Open OneDrive folder ↗</a>
