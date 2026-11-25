@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import GoogleDay, { GoogleSchedule } from './GoogleDay.jsx';
+import { reflectionPrompts } from './reflectionPrompts.js';
 import './jibun.css';
 
 const KEY = 'jibun-techo-state';
@@ -267,6 +268,8 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
           <section className="jt-card jt-reflection-card">
             <div className="jt-section-heading"><span className="jt-step">05</span><div><h3>Take a moment to reflect</h3><p>Capture what you learned, what you noticed, and how you want to move forward.</p></div></div>
             <div className="jt-reflection-grid">
+              {reflectionPrompts((entry.reflection || [])[0]).map((prompt, index) => <label key={index}>{prompt.kicker}: {prompt.title}
+                <textarea value={(entry.reflection || [])[index] || ''} placeholder={prompt.hint} onChange={(e) => setEntry('reflection', Array.from({ length: 3 }, (_, i) => i === index ? e.target.value : (entry.reflection || [])[i] || ''))} /></label>)}
               <label>Silent Strength reading<textarea value={entry.silentStrength || ''} onChange={(e) => setEntry('silentStrength', e.target.value)} placeholder="What stood out and how can you apply it today?" /></label>
               <label>Daily Stoic reading<textarea value={entry.dailyStoic || ''} onChange={(e) => setEntry('dailyStoic', e.target.value)} placeholder="What did you learn and what will you practice?" /></label>
               <label>Daily notes<textarea value={entry.notes || ''} onChange={(e) => setEntry('notes', e.target.value)} placeholder="Notes for this day" /></label>
