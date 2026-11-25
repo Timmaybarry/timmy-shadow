@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { loadGoogleIdentity } from './googleIdentity.js';
 
 const NOTES_KEY = 'timmy-shadow-notes';
@@ -11,7 +11,7 @@ const cardStyle = { background: '#1f2937', border: '1px solid #293548', borderRa
 const inputStyle = { width: '100%', padding: '11px 12px', borderRadius: '10px', border: '1px solid #374151', background: '#111827', color: '#f9fafb', fontSize: '15px', boxSizing: 'border-box' };
 const buttonStyle = { border: '1px solid #374151', borderRadius: '9px', padding: '9px 11px', background: '#111827', color: '#e5e7eb', fontSize: '13px', cursor: 'pointer' };
 
-function readNotes() {
+export function readNotes() {
   try {
     const value = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]');
     return Array.isArray(value) ? value.filter((note) => note && typeof note.id === 'string') : [];
@@ -24,8 +24,7 @@ function calendarDates(date) {
   return { start: date, end };
 }
 
-export default function NotesAndGoogle() {
-  const [notes, setNotes] = useState(readNotes);
+export default function NotesAndGoogle({ notes, setNotes, cloud }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [category, setCategory] = useState('Inbox');
@@ -43,11 +42,6 @@ export default function NotesAndGoogle() {
   const [googleBusy, setGoogleBusy] = useState('');
   const tokenClient = useRef(null);
   const pendingTokenAction = useRef(null);
-
-  useEffect(() => {
-    try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); }
-    catch { setError('Could not save notes in this browser.'); }
-  }, [notes]);
 
   const filteredNotes = useMemo(() => notes.filter((note) => (filter === 'All' || (note.category || 'Inbox') === filter) && `${note.title} ${note.body}`.toLowerCase().includes(query.toLowerCase())), [notes, query, filter]);
 
@@ -149,7 +143,7 @@ export default function NotesAndGoogle() {
   return (
     <section id="notes" style={{ ...cardStyle, color: '#f9fafb', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px', flexWrap: 'wrap' }}>
-        <div><p style={{ color: '#6ee7b7', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Capture and organize</p><h2 style={{ margin: 0, fontSize: '1.2rem' }}>Second Brain</h2><p style={{ color: '#9ca3af', fontSize: '13px', margin: '6px 0 0' }}>Capture in Inbox, then organize into Projects, Areas, Resources, or Archive. {notes.length} saved note{notes.length === 1 ? '' : 's'} · stored on this device</p></div>
+        <div><p style={{ color: '#6ee7b7', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 6px' }}>Capture and organize</p><h2 style={{ margin: 0, fontSize: '1.2rem' }}>Second Brain</h2><p style={{ color: '#9ca3af', fontSize: '13px', margin: '6px 0 0' }}>Capture in Inbox, then organize into Projects, Areas, Resources, or Archive. {notes.length} saved note{notes.length === 1 ? '' : 's'} · {cloud ? 'cloud sync enabled' : 'stored on this device'}</p></div>
       </div>
 
       <div style={{ border: '1px solid #374151', background: '#111827', borderRadius: '12px', padding: '14px', marginTop: '16px' }}>
@@ -189,7 +183,7 @@ export default function NotesAndGoogle() {
           </article>
         ))}
       </div>
-      <p style={{ color: '#9ca3af', fontSize: '11px', lineHeight: 1.5, margin: '14px 0 0' }}>Notes remain in this browser; sending a note to Google creates a separate task or all-day calendar event. Deleting a note here does not delete the Google item.</p>
+      <p style={{ color: '#9ca3af', fontSize: '11px', lineHeight: 1.5, margin: '14px 0 0' }}>Sending a note to Google creates a separate task or all-day calendar event. Deleting a note here does not delete the Google item.</p>
     </section>
   );
 }

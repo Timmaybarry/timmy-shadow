@@ -1,12 +1,14 @@
-const CACHE = 'shadow-v2';
+const CACHE = 'shadow-v3';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(
-  caches.delete('shadow-v1').then(() => self.clients.claim())
+  Promise.all(['shadow-v1', 'shadow-v2'].map((cache) => caches.delete(cache))).then(() => self.clients.claim())
 ));
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== self.location.origin) return;
+  const url = new URL(e.request.url);
+  if (url.searchParams.has('code') || url.searchParams.has('error')) return;
   e.respondWith(
     fetch(e.request)
       .then((res) => {
