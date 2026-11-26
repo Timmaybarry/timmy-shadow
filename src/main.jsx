@@ -6,6 +6,7 @@ import JibunTecho, { emptyPlanner, loadPlanner } from './JibunTecho.jsx';
 import NotesAndGoogle, { readNotes } from './NotesAndGoogle.jsx';
 import { importTimmyOs } from './timmyOsImport.js';
 import { importDaybook } from './daybookImport.js';
+import { growthOf, importGrowth } from './growth.js';
 import { toIcs } from './ics.js';
 import { CloudStore } from './cloudStore.js';
 import './shell.css';
@@ -36,6 +37,7 @@ function DataTools({ data, setData, cloud }) {
   const restoreInput = useRef(null);
   const importInput = useRef(null);
   const daybookInput = useRef(null);
+  const growthInput = useRef(null);
   const [message, setMessage] = useState('');
 
   function downloadBackup() {
@@ -114,6 +116,23 @@ function DataTools({ data, setData, cloud }) {
     }
   }
 
+  async function importGrowthBackup(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      const result = importGrowth(parsed, growthOf(planner));
+      if (!window.confirm('Merge this Daybook growth export? Existing growth data is kept; only new vision answers, skills, old habits, and check-ins are added.')) return;
+      setData((current) => ({ ...current, planner: { ...current.planner, growth: importGrowth(parsed, growthOf(current.planner)).growth } }));
+      const { counts } = result;
+      setMessage(`Growth merged: ${counts.skills} skills, ${counts.oldHabits} old habits, ${counts.checkins} check-ins, ${counts.vision} vision answers added.`);
+    } catch (error) {
+      setMessage(error instanceof SyntaxError ? 'The file is not valid JSON.' : `Could not import: ${error.message}`);
+    } finally {
+      event.target.value = '';
+    }
+  }
+
   function downloadIcs() {
     const url = URL.createObjectURL(new Blob([toIcs(planner)], { type: 'text/calendar' }));
     const link = document.createElement('a');
@@ -132,6 +151,8 @@ function DataTools({ data, setData, cloud }) {
       <button onClick={() => restoreInput.current?.click()}>Restore backup</button>
       <button onClick={() => importInput.current?.click()}>Import Timmy OS</button>
             <button onClick={() => daybookInput.current?.click()}>Import Daybook 2027</button>
+            <button onClick={() => growthInput.current?.click()}>Import Daybook growth</button>
+            <input ref={growthInput} type="file" accept=".json,application/json" onChange={importGrowthBackup} hidden aria-label="Choose a Daybook growth export" />
             <button onClick={downloadIcs}>Export calendar (.ics)</button>
             <input ref={daybookInput} type="file" accept=".json,application/json" onChange={importDaybookBackup} hidden aria-label="Choose a Daybook 2027 backup" />
       <input ref={restoreInput} type="file" accept=".json,application/json" onChange={restoreBackup} hidden aria-label="Choose a life journal backup" />
