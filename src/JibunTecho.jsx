@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import GoogleDay, { GoogleSchedule } from './GoogleDay.jsx';
 import { reflectionPrompts } from './reflectionPrompts.js';
+import {
+  LEVEL_NAMES, PILLARS, VISION_QUESTIONS, bestSlipRun, checkinScore, daysBetween, growthOf, progressSummary, skillGap, skillMinutes, slipStreak, topTrigger,
+} from './growth.js';
 import './jibun.css';
 
 const KEY = 'jibun-techo-state';
@@ -17,7 +20,7 @@ const shift = (k, n) => { const d = parse(k); d.setDate(d.getDate() + n); return
 const uid = () => Math.random().toString(36).slice(2, 10);
 const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 
-export const emptyPlanner = { events: [], todos: [], days: {}, monthGoals: {}, yearGoals: {}, memos: '', life: {}, goals: [], goalLinks: {} };
+export const emptyPlanner = { events: [], todos: [], days: {}, monthGoals: {}, yearGoals: {}, memos: '', life: {}, goals: [], goalLinks: {}, growth: { vision: {}, skills: [], oldHabits: [], checkins: [] } };
 export function loadPlanner() {
   try { return { ...emptyPlanner, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return emptyPlanner; }
 }
@@ -26,6 +29,8 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
   const today = key(new Date());
   const [view, setView] = useState('day');
   const [editing, setEditing] = useState(null);
+  const [growthTab, setGrowthTab] = useState('vision');
+  const [growthDraft, setGrowthDraft] = useState({});
   const [goalText, setGoalText] = useState('');
   const [priorityText, setPriorityText] = useState({ personal: '', work: '' });
 
@@ -303,6 +308,142 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
     </>;
   }
 
+  function Growth() {
+    const g = growthOf(s);
+    const setG = (patch) => upd({ growth: { ...g, ...patch } });
+    const draft = (name) => growthDraft[name] || '';
+    const setDraft = (patch) => setGrowthDraft((d) => ({ ...d, ...patch }));
+    const levels = [1, 2, 3, 4, 5];
+    const levelSelect = (value, onChange, label) => <select aria-label={label} value={value} onChange={(e) => onChange(+e.target.value)}>{levels.map((n) => <option key={n} value={n}>{n} · {LEVEL_NAMES[n]}</option>)}</select>;
+    const sections = [['vision', 'Vision'], ['skills', 'Skills'], ['habits', 'Old habits'], ['progress', 'Progress']];
+
+    const addSkill = () => {
+      const name = draft('skillName').trim();
+      if (!name) return;
+      setG({ skills: [{ id: uid(), name, why: draft('skillWhy').trim(), current: draftNumber('skillCurrent', 1), target: draftNumber('skillTarget', 4), created: today, log: [] }, ...g.skills] });
+      setDraft({ skillName: '', skillWhy: '' });
+    };
+    const draftNumber = (name, fallback) => growthDraft[name] || fallback;
+    const logPractice = (skill) => {
+      const minutes = parseInt(draft(`min-${skill.id}`), 10) || 0;
+      const note = draft(`note-${skill.id}`).trim();
+      if (!note && !minutes) return;
+      const lvl = draftNumber(`lvl-${skill.id}`, skill.current);
+      setG({ skills: g.skills.map((x) => (x.id === skill.id ? { ...x, current: lvl, log: [{ id: uid(), date: today, note, minutes, level: lvl }, ...(x.log || [])] } : x)) });
+      setDraft({ [`min-${skill.id}`]: '', [`note-${skill.id}`]: '' });
+    };
+    const addOldHabit = () => {
+      const name = draft('habitName').trim();
+      if (!name) return;
+      setG({ oldHabits: [{ id: uid(), name, replacement: draft('habitInstead').trim(), created: today, slips: [] }, ...g.oldHabits] });
+      setDraft({ habitName: '', habitInstead: '' });
+    };
+    const slip = (habit) => {
+      setG({ oldHabits: g.oldHabits.map((x) => (x.id === habit.id ? { ...x, slips: [{ id: uid(), date: today, trigger: draft(`trigger-${habit.id}`).trim(), plan: draft(`plan-${habit.id}`).trim() }, ...x.slips] } : x)) });
+      setDraft({ [`trigger-${habit.id}`]: '', [`plan-${habit.id}`]: '' });
+    };
+    const addCheckin = () => {
+      const scores = Object.fromEntries(PILLARS.map((p) => [p, draftNumber(`score-${p}`, 3)]));
+      setG({ checkins: [{ id: uid(), date: today, scores, win: draft('win').trim(), lesson: draft('lesson').trim(), focus: draft('focus').trim() }, ...g.checkins] });
+      setDraft({ win: '', lesson: '', focus: '' });
+    };
+    const confirmRemove = (label, action) => { if (window.confirm(`Delete ${label}?`)) action(); };
+
+    const summary = progressSummary(g, shadow?.entries, today);
+    const stat = (value, label) => <div><strong>{value}</strong> {label}</div>;
+    return <>
+      <div className="jt-head"><h2>GROWTH</h2></div>
+      <p>Describe who you want to become, then track skill gaps, old habits you are leaving behind, and a weekly self-check-in.</p>
+      <div className="jt-actions">{sections.map(([v, l]) => <button key={v} className={growthTab === v ? 'p' : ''} onClick={() => setGrowthTab(v)}>{l}</button>)}</div>
+
+      {growthTab === 'vision' && VISION_QUESTIONS.map(([kicker, question, hint], index) => <label key={index} className="jt-life-field">
+        <small>{kicker}</small><h3>{question}</h3><span className="jt-muted">{hint}</span>
+        <textarea value={g.vision[index] || ''} placeholder="Write freely…" onChange={(e) => setG({ vision: { ...g.vision, [index]: e.target.value } })} />
+      </label>)}
+
+      {growthTab === 'skills' && <>
+        <div className="jt-actions">
+          <input aria-label="Skill name" placeholder="Skill to build" value={draft('skillName')} onChange={(e) => setDraft({ skillName: e.target.value })} />
+          <input aria-label="Why it matters" placeholder="Why it matters" value={draft('skillWhy')} onChange={(e) => setDraft({ skillWhy: e.target.value })} />
+          {levelSelect(draftNumber('skillCurrent', 1), (n) => setDraft({ skillCurrent: n }), 'Current level')}
+          {levelSelect(draftNumber('skillTarget', 4), (n) => setDraft({ skillTarget: n }), 'Target level')}
+          <button onClick={addSkill} disabled={!draft('skillName').trim()}>Add skill</button>
+        </div>
+        {g.skills.length === 0 && <p className="jt-muted">No skills yet. Add the first gap above.</p>}
+        {g.skills.map((skill) => {
+          const last = (skill.log || [])[0];
+          return <div key={skill.id} className="jt-form">
+            <h3>{skill.name}</h3>
+            {skill.why && <p className="jt-muted">{skill.why}</p>}
+            <p>Now {skill.current} ({LEVEL_NAMES[skill.current]}) → Target {skill.target} ({LEVEL_NAMES[skill.target]}) · {skillGap(skill) === 0 ? 'Target reached' : `Gap: ${skillGap(skill)}`}</p>
+            <p className="jt-muted">{(skill.log || []).length} sessions · {skillMinutes(skill)} minutes · {last ? `${daysBetween(last.date, today)} days since practice` : 'not practised yet'}</p>
+            <div className="jt-actions">
+              <input aria-label="Practice note" maxLength={200} placeholder="What did you practise or learn?" value={draft(`note-${skill.id}`)} onChange={(e) => setDraft({ [`note-${skill.id}`]: e.target.value })} />
+              <input aria-label="Minutes practised" type="number" min="1" max="1440" placeholder="Minutes" value={draft(`min-${skill.id}`)} onChange={(e) => setDraft({ [`min-${skill.id}`]: e.target.value })} />
+              {levelSelect(draftNumber(`lvl-${skill.id}`, skill.current), (n) => setDraft({ [`lvl-${skill.id}`]: n }), 'Level after practice')}
+              <button onClick={() => logPractice(skill)}>Log practice</button>
+            </div>
+            {(skill.log || []).slice(0, 5).map((l, i) => <div className="jt-row" key={l.id || i}><span>{l.date} · L{l.level}{l.minutes ? ` · ${l.minutes} min` : ''}{l.note ? ` · ${l.note}` : ''}</span></div>)}
+            <button className="d" onClick={() => confirmRemove(`"${skill.name}" and its history`, () => setG({ skills: g.skills.filter((x) => x.id !== skill.id) }))}>Delete skill</button>
+          </div>;
+        })}
+      </>}
+
+      {growthTab === 'habits' && <>
+        <div className="jt-actions">
+          <input aria-label="Old habit" placeholder="A habit to leave behind" value={draft('habitName')} onChange={(e) => setDraft({ habitName: e.target.value })} />
+          <input aria-label="Replacement" placeholder="Instead I will…" value={draft('habitInstead')} onChange={(e) => setDraft({ habitInstead: e.target.value })} />
+          <button onClick={addOldHabit} disabled={!draft('habitName').trim()}>Add</button>
+        </div>
+        {g.oldHabits.length === 0 && <p className="jt-muted">Nothing tracked yet.</p>}
+        {g.oldHabits.map((habit) => {
+          const top = topTrigger(habit);
+          return <div key={habit.id} className="jt-form">
+            <h3>{habit.name}</h3>
+            {habit.replacement && <p className="jt-muted">Instead: {habit.replacement}</p>}
+            <p>{slipStreak(habit, today)} days since last slip · best run {bestSlipRun(habit, today)} · {habit.slips.length} slips total</p>
+            {top && <p className="jt-muted">Most common trigger: “{top.trigger}” ({top.count}×)</p>}
+            <div className="jt-actions">
+              <input aria-label="Trigger" maxLength={200} placeholder="Trigger (stress, tired, boredom…)" value={draft(`trigger-${habit.id}`)} onChange={(e) => setDraft({ [`trigger-${habit.id}`]: e.target.value })} />
+              <input aria-label="Plan for next time" maxLength={200} placeholder="Next time I will…" value={draft(`plan-${habit.id}`)} onChange={(e) => setDraft({ [`plan-${habit.id}`]: e.target.value })} />
+              <button onClick={() => slip(habit)}>I fell back today</button>
+            </div>
+            {habit.slips.slice(0, 5).map((x, i) => <div className="jt-row" key={x.id || i}><span>{x.date}{x.trigger ? ` · trigger: ${x.trigger}` : ''}{x.plan ? ` · next: ${x.plan}` : ''}</span></div>)}
+            {habit.slips.length > 0 && <button onClick={() => setG({ oldHabits: g.oldHabits.map((h) => (h.id === habit.id ? { ...h, slips: h.slips.slice(1) } : h)) })}>Undo last slip</button>}
+            <button className="d" onClick={() => confirmRemove(`"${habit.name}" and its history`, () => setG({ oldHabits: g.oldHabits.filter((x) => x.id !== habit.id) }))}>Delete</button>
+          </div>;
+        })}
+      </>}
+
+      {growthTab === 'progress' && <>
+        <div className="jt-form">
+          <h3>Where I am today</h3>
+          {stat(summary.streak, 'day journal streak')}
+          {stat(`${summary.recent}/30`, 'days journaled')}
+          {stat(`${summary.visionAnswered}/${VISION_QUESTIONS.length}`, 'vision answered')}
+          {stat(summary.skillPercent === null ? '–' : `${summary.skillPercent}%`, 'of skill targets')}
+          {stat(summary.openGaps, 'skill gaps open')}
+          {stat(summary.longestRun ?? '–', 'longest current run')}
+          <p className="jt-muted">{summary.latestScore === null ? 'Do your first weekly check-in below to start the trend line.' : `Latest self-score ${summary.latestScore.toFixed(1)}/5${summary.scoreChange === null ? '' : ` (${summary.scoreChange >= 0 ? '▲' : '▼'} ${Math.abs(summary.scoreChange).toFixed(1)} vs previous)`}`}</p>
+        </div>
+        <div className="jt-form">
+          <h3>Weekly check-in</h3>
+          {PILLARS.map((p) => <label key={p}>{p} (1–5){levelSelect(draftNumber(`score-${p}`, 3), (n) => setDraft({ [`score-${p}`]: n }), p)}</label>)}
+          <input aria-label="Win" placeholder="A win this week" value={draft('win')} onChange={(e) => setDraft({ win: e.target.value })} />
+          <input aria-label="Lesson" placeholder="A lesson" value={draft('lesson')} onChange={(e) => setDraft({ lesson: e.target.value })} />
+          <input aria-label="Next focus" placeholder="Next focus" value={draft('focus')} onChange={(e) => setDraft({ focus: e.target.value })} />
+          <button onClick={addCheckin}>Save check-in</button>
+        </div>
+        {g.checkins.slice(0, 8).map((c, i) => <div key={c.id || i} className="jt-form">
+          <h3>{c.date} · {checkinScore(c).toFixed(1)}/5</h3>
+          <p className="jt-muted">{PILLARS.map((p) => `${p} ${c.scores?.[p] ?? '–'}`).join(' · ')}</p>
+          {c.win && <p>Win: {c.win}</p>}{c.lesson && <p>Lesson: {c.lesson}</p>}{c.focus && <p>Next focus: {c.focus}</p>}
+          <button className="d" onClick={() => confirmRemove('this check-in', () => setG({ checkins: g.checkins.filter((x) => x !== c) }))}>Delete</button>
+        </div>)}
+      </>}
+    </>;
+  }
+
   function Memo() {
     return (
       <>
@@ -315,11 +456,11 @@ export default function JibunTecho({ s, setS, date, setDate, shadow, setShadow, 
     );
   }
 
-  const tabs = [['life', 'LIFE'], ['year', 'Year'], ['month', 'Month'], ['week', 'Week'], ['day', 'Day'], ['memo', 'IDEA']];
+  const tabs = [['life', 'LIFE'], ['growth', 'Growth'], ['year', 'Year'], ['month', 'Month'], ['week', 'Week'], ['day', 'Day'], ['memo', 'IDEA']];
   return (
     <div className="jt">
       <div className="jt-page" style={{ marginTop: 40 }}>
-        {editing ? EventForm() : view === 'life' ? Life() : view === 'year' ? Year() : view === 'month' ? Month() : view === 'week' ? Week() : view === 'day' ? Day() : Memo()}
+        {editing ? EventForm() : view === 'life' ? Life() : view === 'growth' ? Growth() : view === 'year' ? Year() : view === 'month' ? Month() : view === 'week' ? Week() : view === 'day' ? Day() : Memo()}
       </div>
       <nav className="jt-nav">
         {tabs.map(([v, l]) => <button key={v} className={view === v ? 'on' : ''} onClick={() => { setEditing(null); setView(v); }}>{l}</button>)}
